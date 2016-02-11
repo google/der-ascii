@@ -257,10 +257,6 @@ func derToASCIIImpl(w *writer, bytes []byte, stopAtEOC bool) []byte {
 				}
 			default:
 				// Keep parsing if the body looks like ASN.1.
-				//
-				// TODO(davidben): This is O(N^2) for deeply-
-				// nested indefinite-length encodings inside
-				// primitive elements.
 				if isMadeOfElements(body) {
 					w.WriteLine(fmt.Sprintf("%s {", tagToString(tag)))
 					w.AddIndent(1)
