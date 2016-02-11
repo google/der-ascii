@@ -6,7 +6,7 @@ disassembling it into DER ASCII, making adjustments, and assembling back into
 DER. This avoids having to manually fix up all the length prefixes. As a bonus,
 it acts as a human-readable view for DER structures.
 
-For the language specification, see [language.txt](/language.txt).
+For the language specification and samples, see [language.txt](/language.txt).
 
 This project provides two tools, `ascii2der` and `der2ascii`, to convert DER
 ASCII to a byte string and vice versa. To install them, run:
