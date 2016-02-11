@@ -24,51 +24,22 @@ import (
 	"github.com/google/der-ascii/lib"
 )
 
-type writer struct {
-	out    string
-	indent int
-}
-
-func (w *writer) String() string {
-	return w.out
-}
-
-func (w *writer) SetIndent(indent int) {
-	w.indent = indent
-}
-
-func (w *writer) Indent() int {
-	return w.indent
-}
-
-func (w *writer) AddIndent(v int) {
-	w.indent += v
-}
-
-func (w *writer) WriteLine(line string) {
-	for i := 0; i < w.indent; i++ {
-		w.out += "  "
-	}
-	w.out += line
-	w.out += "\n"
-}
-
-// isMadeOfElements returns true if bytes can be parsed as a series of DER
+// isMadeOfElements returns true if in can be parsed as a series of DER
 // elements with no trailing data and false otherwise.
-func isMadeOfElements(bytes []byte) bool {
+func isMadeOfElements(in []byte) bool {
 	var indefiniteCount int
-	for len(bytes) != 0 {
-		if indefiniteCount > 0 && len(bytes) >= 2 && bytes[0] == 0 && bytes[1] == 0 {
-			bytes = bytes[2:]
+	for len(in) != 0 {
+		if indefiniteCount > 0 && len(in) >= 2 && in[0] == 0 && in[1] == 0 {
+			in = in[2:]
 			indefiniteCount--
 			continue
 		}
 
-		_, _, indefinite, rest, ok := parseElement(bytes)
+		_, _, indefinite, rest, ok := parseElement(in)
 		if !ok {
 			return false
 		}
-		bytes = rest
+		in = rest
 		if indefinite {
 			indefiniteCount++
 		}
@@ -117,27 +88,27 @@ func tagToString(tag lib.Tag) string {
 	return out
 }
 
-func bytesToString(bytes []byte) string {
-	if len(bytes) == 0 {
+func bytesToString(in []byte) string {
+	if len(in) == 0 {
 		return ""
 	}
 
 	var asciiCount int
-	for _, b := range bytes {
+	for _, b := range in {
 		if b < 0x80 && (b == '\n' || unicode.IsPrint(rune(b))) {
 			asciiCount++
 		}
 	}
 
-	if float64(asciiCount)/float64(len(bytes)) > 0.85 {
-		return bytesToQuotedString(bytes)
+	if float64(asciiCount)/float64(len(in)) > 0.85 {
+		return bytesToQuotedString(in)
 	} else {
-		return bytesToHexString(bytes)
+		return bytesToHexString(in)
 	}
 }
 
-func bytesToHexString(bytes []byte) string {
-	return fmt.Sprintf("`%s`", hex.EncodeToString(bytes))
+func bytesToHexString(in []byte) string {
+	return fmt.Sprintf("`%s`", hex.EncodeToString(in))
 }
 
 func bytesToQuotedString(in []byte) string {
@@ -160,12 +131,12 @@ func bytesToQuotedString(in []byte) string {
 	return out.String()
 }
 
-func integerToString(bytes []byte) string {
-	v, ok := decodeInteger(bytes)
+func integerToString(in []byte) string {
+	v, ok := decodeInteger(in)
 	if ok && -100000 <= v && v <= 100000 {
 		return strconv.FormatInt(v, 10)
 	}
-	return bytesToHexString(bytes)
+	return bytesToHexString(in)
 }
 
 func objectIdentifierToString(in []byte) string {
@@ -183,48 +154,51 @@ func objectIdentifierToString(in []byte) string {
 	return out.String()
 }
 
-func derToASCIIImpl(w *writer, bytes []byte, stopAtEOC bool) []byte {
-	for len(bytes) != 0 {
-		if stopAtEOC && len(bytes) >= 2 && bytes[0] == 0 && bytes[1] == 0 {
+func addLine(out *bytes.Buffer, indent int, value string) {
+	for i := 0; i < indent; i++ {
+		out.WriteString("  ")
+	}
+	out.WriteString(value)
+	out.WriteString("\n")
+}
+
+// derToASCIIImpl disassembles in and writes the result to out with the given
+// indent. If stopAtEOC is true, it will stop after an end-of-contents marker
+// and return the remaining unprocessed bytes of in.
+func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []byte {
+	for len(in) != 0 {
+		if stopAtEOC && len(in) >= 2 && in[0] == 0 && in[1] == 0 {
 			// Emit a `0000` in lieu of a closing base.
-			w.AddIndent(-1)
-			w.WriteLine(bytesToString(bytes[:2]))
-			return bytes[2:]
+			addLine(out, indent-1, "`0000`")
+			return in[2:]
 		}
 
-		tag, body, indefinite, rest, ok := parseElement(bytes)
+		tag, body, indefinite, rest, ok := parseElement(in)
 		if !ok {
 			// Nothing more to encode. Write the rest as bytes.
-			w.WriteLine(bytesToString(bytes))
+			addLine(out, indent, bytesToString(in))
 			return nil
 		}
-		bytes = rest
+		in = rest
 
 		if indefinite {
 			// Emit a `80` in lieu of an open brace.
-			w.WriteLine(fmt.Sprintf("%s `80`", tagToString(tag)))
-			indent := w.Indent()
-			w.AddIndent(1)
-			bytes = derToASCIIImpl(w, bytes, true)
-			// If EOC was missing, the indent may not have been
-			// restored correctly.
-			w.SetIndent(indent)
+			addLine(out, indent, fmt.Sprintf("%s `80`", tagToString(tag)))
+			in = derToASCIIImpl(out, in, indent+1, true)
 			continue
 		}
 
 		if len(body) == 0 {
 			// If the body is empty, skip the newlines.
-			w.WriteLine(fmt.Sprintf("%s {}", tagToString(tag)))
+			addLine(out, indent, fmt.Sprintf("%s {}", tagToString(tag)))
 			continue
 		}
 
 		if tag.Constructed {
 			// If the element is constructed, recurse.
-			w.WriteLine(fmt.Sprintf("%s {", tagToString(tag)))
-			w.AddIndent(1)
-			derToASCIIImpl(w, body, false)
-			w.AddIndent(-1)
-			w.WriteLine("}")
+			addLine(out, indent, fmt.Sprintf("%s {", tagToString(tag)))
+			derToASCIIImpl(out, body, indent+1, false)
+			addLine(out, indent, "}")
 		} else {
 			// The element is primitive. By default, emit the body
 			// on the same line as curly braces. However, in some
@@ -238,35 +212,31 @@ func derToASCIIImpl(w *writer, bytes []byte, stopAtEOC bool) []byte {
 			name, _, _ := tag.GetAlias()
 			switch name {
 			case "INTEGER":
-				w.WriteLine(fmt.Sprintf("%s { %s }", tagToString(tag), integerToString(body)))
+				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), integerToString(body)))
 			case "OBJECT_IDENTIFIER":
-				w.WriteLine(fmt.Sprintf("%s { %s }", tagToString(tag), objectIdentifierToString(body)))
+				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), objectIdentifierToString(body)))
 			case "BIT_STRING":
 				// X.509 encodes signatures and SPKIs in BIT
 				// STRINGs, so there is a 0 phase byte followed
 				// by the potentially DER-encoded structure.
 				if len(body) > 1 && body[0] == 0 && isMadeOfElements(body[1:]) {
-					w.WriteLine(fmt.Sprintf("%s {", tagToString(tag)))
-					w.AddIndent(1)
+					addLine(out, indent, fmt.Sprintf("%s {", tagToString(tag)))
 					// Emit the phase byte.
-					w.WriteLine(bytesToString(body[:1]))
+					addLine(out, indent+1, "`00`")
 					// Emit the remaining as a DER element.
-					derToASCIIImpl(w, body[1:], false) // Adds a trailing newline.
-					w.AddIndent(-1)
-					w.WriteLine("}")
+					derToASCIIImpl(out, body[1:], indent+1, false) // Adds a trailing newline.
+					addLine(out, indent, "}")
 				} else {
-					w.WriteLine(fmt.Sprintf("%s { %s }", tagToString(tag), bytesToString(body)))
+					addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), bytesToString(body)))
 				}
 			default:
 				// Keep parsing if the body looks like ASN.1.
 				if isMadeOfElements(body) {
-					w.WriteLine(fmt.Sprintf("%s {", tagToString(tag)))
-					w.AddIndent(1)
-					derToASCIIImpl(w, body, false)
-					w.AddIndent(-1)
-					w.WriteLine("}")
+					addLine(out, indent, fmt.Sprintf("%s {", tagToString(tag)))
+					derToASCIIImpl(out, body, indent+1, false)
+					addLine(out, indent, "}")
 				} else {
-					w.WriteLine(fmt.Sprintf("%s { %s }", tagToString(tag), bytesToString(body)))
+					addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), bytesToString(body)))
 				}
 			}
 		}
@@ -274,8 +244,8 @@ func derToASCIIImpl(w *writer, bytes []byte, stopAtEOC bool) []byte {
 	return nil
 }
 
-func derToASCII(bytes []byte) string {
-	var w writer
-	derToASCIIImpl(&w, bytes, false)
-	return w.String()
+func derToASCII(in []byte) string {
+	var out bytes.Buffer
+	derToASCIIImpl(&out, in, 0, false)
+	return out.String()
 }

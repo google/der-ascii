@@ -20,31 +20,6 @@ import (
 	"github.com/google/der-ascii/lib"
 )
 
-func TestWriter(t *testing.T) {
-	var w writer
-
-	w.WriteLine("hello")
-	w.AddIndent(1)
-	w.WriteLine("world")
-	w.AddIndent(-1)
-	w.WriteLine("1")
-	w.AddIndent(1)
-	if indent := w.Indent(); indent != 1 {
-		t.Errorf("w.Indent() = %d, wanted 1.", indent)
-	}
-	w.SetIndent(3)
-	w.WriteLine("2")
-
-	const expected = `hello
-  world
-1
-      2
-`
-	if out := w.String(); out != expected {
-		t.Errorf("w.String = `%s`, wanted `%s`.", out, expected)
-	}
-}
-
 var isMadeOfElementsTests = []struct {
 	in  []byte
 	out bool
