@@ -9,6 +9,8 @@ it acts as a human-readable view for DER structures.
 For the language specification, see [language.txt](/language.txt).
 
 This project provides two tools, `ascii2der` and `der2ascii`, to convert DER
-ASCII to a byte string and vice versa.
+ASCII to a byte string and vice versa. To install them, run:
+
+    go get github.com/google/der-ascii/...
 
 This is not an official Google project.
