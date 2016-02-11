@@ -32,27 +32,24 @@ func decodeTagString(s string) (lib.Tag, error) {
 	tag, ok := lib.TagByName(ss[0])
 	if ok {
 		ss = ss[1:]
-		goto constructedOrPrimitive
-	}
+	} else {
+		// Tags default to constructed, context-specific.
+		tag.Class = lib.ClassContextSpecific
+		tag.Constructed = true
 
-	// Tags default to constructed, context-specific.
-	tag.Class = lib.ClassContextSpecific
-	tag.Constructed = true
+		// Otherwise, the first component is an optional class.
+		switch ss[0] {
+		case "APPLICATION":
+			tag.Class = lib.ClassApplication
+			ss = ss[1:]
+		case "PRIVATE":
+			tag.Class = lib.ClassPrivate
+			ss = ss[1:]
+		case "UNIVERSAL":
+			tag.Class = lib.ClassUniversal
+			ss = ss[1:]
+		}
 
-	// Otherwise, the first component is an optional class.
-	switch ss[0] {
-	case "APPLICATION":
-		tag.Class = lib.ClassApplication
-		ss = ss[1:]
-	case "PRIVATE":
-		tag.Class = lib.ClassPrivate
-		ss = ss[1:]
-	case "UNIVERSAL":
-		tag.Class = lib.ClassUniversal
-		ss = ss[1:]
-	}
-
-	{
 		// The next (or first) component must be the tag number.
 		// Introduce a scope so the goto above is legal.
 		if len(ss) == 0 {
@@ -66,7 +63,6 @@ func decodeTagString(s string) (lib.Tag, error) {
 		ss = ss[1:]
 	}
 
-constructedOrPrimitive:
 	// The final token, if any, may be CONSTRUCTED or PRIMITIVE.
 	if len(ss) > 0 {
 		switch ss[0] {
