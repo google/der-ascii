@@ -1,0 +1,211 @@
+# DER ASCII Language Specification.
+
+# This specification is a valid DER ASCII file.
+
+
+# A DER ASCII file is a sequence of tokens. Most tokens are byte tokens and
+# resolve to a byte string which is emitted as soon as it is processed.
+
+# Tokens are separated by whitespace, which is defined to be space (0x20), TAB
+# (0x09), CR (0x0d), and LF (0x0a). Apart from acting as a token separator,
+# whitespace is not significant.
+
+# Comments begin with # and run to the end of the line. Comments are treated as
+# whitespace.
+
+
+# Quoted strings.
+
+"Quoted strings are delimited by double quotes. Backslash denotes escape
+sequences. Legal escape sequences are: \\ \" \x00 \n. \x00 consumes two hex
+digits and emits a byte. Otherwise, any byte before the closing quote, including
+newlines, is emitted as-is."
+
+# Objects in the file are emitted one after another, so:
+"hello world"
+# produces the same output as:
+"hello " "world"
+
+
+# Hex literals.
+
+# Backticks denote hex literals. Either uppercase or lowercase is legal, but no
+# characters other than hexadecimal digits may appear. A hex literal emits the
+# decoded byte string.
+`00`
+`abcdef`
+`AbCdEf`
+
+
+# Integers.
+
+# Tokens which match /-?[0-9]+/ are integer tokens. They emit the contents of
+# that integer's encoding as a DER INTEGER. (Big-endian, base-256,
+# two's-complement, and minimally-encoded.)
+456
+
+
+# OIDs.
+
+# Tokens which match /[0-9]+(\.[0-9]+)+/ are OID tokens. They emits the contents
+# of that OID's encoding as a DER OBJECT IDENTIFIER.
+1.2.840.113554.4.1.72585
+
+
+# Tag expressions.
+
+# Square brackets denote a tag expression, as in ASN.1. Unlike ASN.1, the
+# constructed bit is treated as part of the tag.
+#
+# A tag expression contains one to three components separated by space. The
+# components are an optional tag class, a decimal tag number, and an optional
+# constructed bit. By default, tags have class context-specific and set the
+# constructed bit. Alternatively, the first two components may be replaced by a
+# type name (see below).
+#
+# A tag expression emits the DER encoding of that tag. Note that it does not
+# emit an element body. Those are specified separatedly.
+#
+# Examples:
+[0]
+[0 PRIMITIVE]
+[0 CONSTRUCTED] # This is equivalent to [0]
+[APPLICATION 1]
+[PRIVATE 2]
+[UNIVERSAL 16] # This is a SEQUENCE.
+[UNIVERSAL 2 PRIMITIVE] # This is an INTEGER.
+
+# As a shorthand, one may write type names from ASN.1, replacing spaces with
+# underscore. These specify tag, number, and the constructed bit. The
+# constructed bit is set for SEQUENCE and SET and unset otherwise.
+INTEGER
+SEQUENCE
+OCTET_STRING
+
+# Within a tag expression, type names may also be used in place of the class
+# and tag number. This also switches the default constructed bit to that tag's
+# constructed bit.
+[SEQUENCE PRIMITIVE]
+[OCTET_STRING CONSTRUCTED]
+[INTEGER] # This is the same as INTEGER
+[INTEGER PRIMITIVE] # This is the same as INTEGER
+
+
+# Length prefixes.
+
+# Matching curly braces denote length prefixes. They emit a DER-encoded length
+# prefix followed by the encoding of the brace contents. There is no requirement
+# that braces correspond to tags, but non-garbage outputs should pair them up.
+
+# This is an OID.
+OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585 }
+
+# This is a NULL.
+NULL {}
+
+# This is a SEQUENCE of two INTEGERs.
+SEQUENCE {
+  INTEGER { 1 }
+  INTEGER { `00ff` }
+}
+
+# This is an explicitly-tagged SEQUENCE.
+[0] {
+  SEQUENCE {
+    INTEGER { 1 }
+    INTEGER { `00ff` }
+  }
+}
+
+# Note that curly braces are not optional, even in explicit tagging. Thus this
+# isn't the same thing, despite the similar ASN.1 syntax.
+[0] SEQUENCE {
+  INTEGER { 1 }
+  INTEGER { `00ff` }
+}
+
+# This is a BER constructed OCTET STRING.
+[OCTET_STRING CONSTRUCTED] {
+  OCTET_STRING { "hello " }
+  OCTET_STRING { "world" }
+}
+
+# Implicit tagging is written without the underlying tag, as in DER. This is an
+# implicitly-tagged INTEGER. Note that the constructed bit must be set
+# accordingly for a correct encoding.
+[0 PRIMITIVE] { 1 }
+
+
+# Examples.
+
+# These primitives may be combined with raw byte strings to produce other
+# encodings.
+
+# This is an indefinite-length SEQUENCE.
+SEQUENCE `80`
+  INTEGER { 1 }
+  INTEGER { 2 }
+`0000`
+
+# This is a SEQUENCE with the wrong constructed bit.
+[SEQUENCE PRIMITIVE] {
+  INTEGER { 1 }
+  INTEGER { 2 }
+}
+
+# This is a SEQUENCE with the tag incorrectly encoded in high tag number form.
+`3f90` {
+  INTEGER { 1 }
+  INTEGER { 2 }
+}
+
+# This is a SEQUENCE with garbage instead of the length.
+SEQUENCE `aabbcc`
+  INTEGER { 1 }
+  INTEGER { 2 }
+
+
+# Disassembler.
+
+# Although the conversion from DER ASCII to a byte string is well-defined, the
+# inverse is not. A given byte string may have multiple disassemblies. The
+# disassembler heuristically attempts to give a useful conversion for its
+# input.
+#
+# It is a goal that any valid BER or DER input will be decoded reasonably, along
+# with common embeddings of encoded structures within OCTET STRINGs, etc.
+# Invalid encodings, however, will likely disassemble to a hex literal and not
+# be easily editable.
+#
+# The algorithm is as follows:
+#
+# 1. Raw byte strings are encoded heuristically as quoted strings or hex
+#    literals depending on what fraction is printable ASCII.
+#
+# 2. Greedly parse BER elements out of the input. Indefinite-length encoding is
+#    legal. On parse error, encode the remaining bytes as in step 1.
+#
+# 3. Minimally encode the tag in the BER element followed by the body in curly
+#    braces. If the element is indefinite-length, emit `80` for { and `0000` for
+#    }.
+#
+# 4. If the element has the constructed bit, recurse to encode the body.
+#
+# 5. Otherwise, heuristically encode the body based on the tag:
+#
+#    a. If the tag is INTEGER and the body is a valid integer under some
+#       threshold, encode as an integer. Otherwise a hex literal.
+#
+#    b. If the tag is OBJECT IDENTIFIER and the body is a valid OID, encode as
+#       an OID. Otherwise a hex literal.
+#
+#    c. If the tag is BIT STRING, the body's first byte is 00 and the remainder
+#       may be parsed as a series of BER elements without trailing data, emit
+#       `00` and recurse into the remainder of the body. Otherwise, emit the
+#       body as a raw byte string. This is to account for X.509 incorrectly
+#       using BIT STRING instead of OCTET STRING for SubjectPublicKeyInfo and
+#       signatures.
+#
+#    d. Otherwise, if the body may be parsed as a series of BER elements without
+#       trailing data, recurse into the body. If not, encode it as a raw byte
+#       string.
