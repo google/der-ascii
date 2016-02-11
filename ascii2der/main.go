@@ -21,25 +21,26 @@ import (
 	"os"
 )
 
+var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
 
 func main() {
 	flag.Parse()
 
-	var err error
-	inFile := os.Stdin
 	if flag.NArg() > 0 {
-		if flag.NArg() == 1 {
-			inFile, err = os.Open(flag.Arg(0))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error opening %s: %s\n", flag.Arg(0), err)
-				os.Exit(1)
-			}
-			defer inFile.Close()
-		} else {
-			fmt.Fprintf(os.Stderr, "Usage: %s [INPUT] [-o OUTPUT]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [-i INPUT] [-o OUTPUT]\n", os.Args[0])
+		os.Exit(1)
+	}
+
+	inFile := os.Stdin
+	if *inPath != "" {
+		var err error
+		inFile, err = os.Open(*inPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening %s: %s\n", *inPath, err)
 			os.Exit(1)
 		}
+		defer inFile.Close()
 	}
 
 	inBytes, err := ioutil.ReadAll(inFile)
@@ -56,6 +57,7 @@ func main() {
 
 	outFile := os.Stdout
 	if *outPath != "" {
+		var err error
 		outFile, err = os.Create(*outPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error opening %s: %s\n", *outPath, err)
