@@ -51,7 +51,6 @@ func decodeTagString(s string) (lib.Tag, error) {
 		}
 
 		// The next (or first) component must be the tag number.
-		// Introduce a scope so the goto above is legal.
 		if len(ss) == 0 {
 			return lib.Tag{}, errors.New("expected tag number")
 		}
