@@ -11,6 +11,6 @@ For the language specification and samples, see [language.txt](/language.txt).
 This project provides two tools, `ascii2der` and `der2ascii`, to convert DER
 ASCII to a byte string and vice versa. To install them, run:
 
-    go get github.com/google/der-ascii/...
+    go get github.com/google/der-ascii/cmd/...
 
 This is not an official Google project.
