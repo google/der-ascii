@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -139,23 +140,24 @@ func bytesToHexString(bytes []byte) string {
 	return fmt.Sprintf("`%s`", hex.EncodeToString(bytes))
 }
 
-func bytesToQuotedString(bytes []byte) string {
-	out := `"`
-	for _, b := range bytes {
+func bytesToQuotedString(in []byte) string {
+	var out bytes.Buffer
+	out.WriteString(`"`)
+	for _, b := range in {
 		if b == '\n' {
-			out += `\n`
+			out.WriteString(`\n`)
 		} else if b == '"' {
-			out += `\"`
+			out.WriteString(`\"`)
 		} else if b == '\\' {
-			out += `\\`
+			out.WriteString(`\\`)
 		} else if b >= 0x80 || !unicode.IsPrint(rune(b)) {
-			out += fmt.Sprintf(`\x%02x`, b)
+			fmt.Fprintf(&out, `\x%02x`, b)
 		} else {
-			out += string([]byte{b})
+			out.WriteByte(b)
 		}
 	}
-	out += `"`
-	return out
+	out.WriteString(`"`)
+	return out.String()
 }
 
 func integerToString(bytes []byte) string {
@@ -166,19 +168,19 @@ func integerToString(bytes []byte) string {
 	return bytesToHexString(bytes)
 }
 
-func objectIdentifierToString(bytes []byte) string {
-	oid, ok := decodeObjectIdentifier(bytes)
+func objectIdentifierToString(in []byte) string {
+	oid, ok := decodeObjectIdentifier(in)
 	if !ok {
-		return bytesToHexString(bytes)
+		return bytesToHexString(in)
 	}
-	var out string
+	var out bytes.Buffer
 	for i, v := range oid {
 		if i != 0 {
-			out += "."
+			out.WriteString(".")
 		}
-		out += strconv.FormatUint(uint64(v), 10)
+		out.WriteString(strconv.FormatUint(uint64(v), 10))
 	}
-	return out
+	return out.String()
 }
 
 func derToASCIIImpl(w *writer, bytes []byte, stopAtEOC bool) []byte {
