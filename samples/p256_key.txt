@@ -1,0 +1,13 @@
+# This is ecdsa_key.pem from BoringSSL's tests.
+# https://boringssl.googlesource.com/boringssl/+/5acc423517ec9d53e6cf2cd1b968405e0972c745/ssl/test/runner/ecdsa_key.pem
+
+SEQUENCE {
+  INTEGER { 1 }
+  OCTET_STRING { `070f08727ad4a04a9cdd59c94d89687708b56fc95d30770ee8d1c9ce0a8bb46a` }
+  [0] {
+    OBJECT_IDENTIFIER { 1.2.840.10045.3.1.7 }
+  }
+  [1] {
+    BIT_STRING { `0004e62b69e2bf659f97be2f1e0d948a4cd5976bb7a91e0d46fbdda9a91e9ddcba5a01e7d697a80a18f9c3c4a31e56e27c8348db161a1cf51d7ef1942d4bcf7222c1` }
+  }
+}

@@ -1,0 +1,91 @@
+# This is kNSS from BoringSSL's pkcs12_test. It includes many samples of BER
+# indefinite-length encoding and constructed strings.
+# https://boringssl.googlesource.com/boringssl/+/5acc423517ec9d53e6cf2cd1b968405e0972c745/crypto/pkcs8/pkcs12_test.cc#240
+
+SEQUENCE `80`
+  INTEGER { 3 }
+  SEQUENCE `80`
+    OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
+    [0] `80`
+      [OCTET_STRING CONSTRUCTED] `80`
+        OCTET_STRING {
+          SEQUENCE `80`
+            SEQUENCE `80`
+              OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
+              [0] `80`
+                [OCTET_STRING CONSTRUCTED] `80`
+                  OCTET_STRING {
+                    SEQUENCE {
+                      SEQUENCE {
+                        OBJECT_IDENTIFIER { 1.2.840.113549.1.12.10.1.2 }
+                        [0] {
+                          SEQUENCE {
+                            SEQUENCE {
+                              OBJECT_IDENTIFIER { 1.2.840.113549.1.12.1.3 }
+                              SEQUENCE {
+                                OCTET_STRING { `ac718a7c89cfa8b0d6d107f0834f7ad0` }
+                                INTEGER { 2000 }
+                              }
+                            }
+                            OCTET_STRING { `ea512c61aa9df390e13845b05ffde20465e6ff87b67869b0cb14e99939e3e570845768f728b975a6fb1672e134b83b615189189440ef73dadbd7b744738f1684a299a6055e74aee2cf3e99cacd76367759ec25593d4b45a54e7b7ac98bde4f706db1a8f3b6b5e7673fe964b849f411949d1cb0a5fbb361d4f3a76866d7a4f0cdc8404f3ea726407664a14ef191c2a3efbccd42e5d26ffffe4d3301b499631bd3015500a6239ba9170938321836bc2002fe7becd34c7dc9c9ce663b346eeaf9b11a83a33c8dc779c9ff6b1d35f62a3d3b831664cf9f7c3102da371a1649dcd970ae992cc701ba42abe94da4782cbda0f1b7cfddc1db8f04870b474fd5d5e7fc6e42d5914d7b1b5c3c0270db0591af354305c26dcf5923fcc4f667f184614ab64c1515a3ea8f1315e3d2b550c8aec85c03b56393aa10d7560d6e13458fec175c5c73915f6caf1113325e14f9afaf430460934230a675c083d24ca50a1639ef3ff79d2319b9cdd87c6eee6d2eff5af3b9abe564dcc2673073192dead2191f1fe0d9acc9db38745e31472e9e2bccb9e429f8b2bf1bbc689679cfaff21f573f74c47163b4e8be58db2862b5798be4d096d0da0fd270932f71e09f28b752389ccb8b2a8ebf0e3d60050a915bb57810310080312dd7b088c7d958c6fc3bf4eeecba05aeaeffcfd071c6e7f38b64507a09930f34592dde4b1d8649ff6376286b521b460618901c2dc503cc004db7b212c5f9b4a46a366246342af011a3d68021bf3bfdc525a04dc02ec0f17b9611648eb9db894e3389f5c6fc2b99f5c204831547a8a5c14ae476ab3ef09bb78d46d3529bbdfd2bba735d236768e1766f562b17e47e9afd054839c9cfa583f7909ca4285740e9d44b1a4b6f6514ca43c13f7cec82470e648b6f8cb2f06deb6f718fcc2d602bc39f1394c72302f5e6df2da9dba9f3eee93f2a69246b78ff6ad7e4698c17d5c1361aca77b0b56b964ab50e4d0bd6d978c5bfe359fe63e3d33c9afad7695befd3a4a3b91f5c402095382df5040c2c7977c1b6cc743c66f1c665ab4d6841167151b91bcba76de070a9fa656b7b1ec5dfe24c96446b24a1158ee79b1f51efd7655fcd747f2d5cbaba20328d1cf15aed21ad787b5958e4f6a71035ca5d861a68ba1c3c1c23798b9fda5cd15aa9c8f6c9df215a98dcf4b902972c1060c9b5ea750bd98aa48692bef5d8c76b138bbbca5fe48bceb527ae53edef37a6818f70251893068c18cd7a1a8dfcde6f30db41b6421454f8cdc6f80f8217fa8dba80816af702970078d65bc9bad199ef8e486c35105bf19b934fbd7d279ec786b28f6a91592d14ab1b346efa255e14c7ef3d0f13f9454b90bcd8514295259b1b7caf3b60214c5f7c634b45a6dcfd32f30661112d27de193863f970d1828ec799e1969b5493645fd1629c37101a8a828d2a939522c921f5ce21bb7c17ee20a073aa69784e0d2c2c9623dc0716bde7d549cc44d19dd7a30160a0e04163288a43db4f255b27524aee42439aef334370da6457490c7ffdc788269410cc051d5495ea4e652803bca262d2ce6034f9db26b5e69b552c8f303a949a157922754d1b91e05bdbd1157fccc688b5003f5d842e68de6f415b4ee7dfe63b7ef2ddfc01f21b52bac451ae8fa055128157e0585eead785fb198bb7242994a7fced17aa325011b37a433ac02b829c85d9d0db217183b43014ecfc8d32d6a2365e3be9120c95d60c0c` }
+                          }
+                        }
+                        SET {
+                          SEQUENCE {
+                            OBJECT_IDENTIFIER { 1.2.840.113549.1.9.20 }
+                            SET {
+                              BMPString { `0049006e007400650072006e006500740020005700690064006700690074007300200050007400790020004c00740064` }
+                            }
+                          }
+                          SEQUENCE {
+                            OBJECT_IDENTIFIER { 1.2.840.113549.1.9.21 }
+                            SET {
+                              OCTET_STRING { `14742d528e0d0c066c3264d37e3331688b281a75` }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `0000`
+              `0000`
+            `0000`
+            SEQUENCE `80`
+              OBJECT_IDENTIFIER { 1.2.840.113549.1.7.6 }
+              [0] `80`
+                SEQUENCE `80`
+                  INTEGER { 0 }
+                  SEQUENCE `80`
+                    OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
+                    SEQUENCE {
+                      OBJECT_IDENTIFIER { 1.2.840.113549.1.12.1.6 }
+                      SEQUENCE {
+                        OCTET_STRING { `9d1b688e11c2b2d6d0e95a9e96c18ca6` }
+                        INTEGER { 2000 }
+                      }
+                    }
+                    [0] `80`
+                      OCTET_STRING { `1dce13707a6b0a122d0184635c078223f88a5e538fc8b4871aa298dbc626cabb2024adacdfbe736d974b6e5b45d284d4a482d0ce40134c6d4d2ec196950164f3f05f0606eaf7848fb3b06e7c9b7173b9cdac72f6a023da9b9fec16ef33d4d04d20f075a973f431c757b80d9d857cee3a247b74a05cadde5e051eeb027812b4b9c6e5c599bc05625b105208009e73ace41ddbb8bf480328053c611a8b4cd75f8cb4cd911c0bf455d41c424ad4f51538d906fc49f6e5a7095d01bdc3d1099f5d0c1943d0fa2517ad2abf896306a80203e4fe190870a17474b6b60f194d54a5b2d7373b17c05dc28af1ccedef65c8cabe02d49b1eefc9e09182b0e050c7a0cc016d55e567996513e4d29091f3760b6a2d19af61b37f4c04fe68f6b356d8f334d7040a31c837dfacd891808a30122280d724cf70af56af81fe63f1ea574cf2db305092c1eb049adff574575b58c24e6b11f3e1b30f563504f8501d7ee699a248dbea624f98c2efbf7f94c036c0f327fee2171e917d96a92b7151c3592d11501ecbceff044d16f5c2d41fdd7f5afd1de9635244765f91fde8df0a690dd36491eadd034f42a5e9a17005f3228ead701a3e944206e747373df5da3e2a3ac023d94a266913a6937cf2af045e9b88c777d093ab1bbd3d6990ab41a9bc84184d2902c1f8ff631824748f7e4433af888b935b9aae6b08a2825df3be61c3f02d314cb5b5910ffa8161adfcba91eb3b9d2241450e8e24c71c8195a87b64eda5ec5a683c858d92b7240fedf5c63161dcefa7cb8fda430542f69ebc1b9aa1e81d8d42db808355522b9500058284c354238e1d00a2163ece3dcc9eb84c59b212a223c1465086ae757e49387794f027d817388ce07300fbafbfe8ed85583eb48804c8221bb475a2c4dd06d283422157fcd8ae9c0ed86a70d1eb449cb7370405f517bef3561b06361c597b658dbbbe229a70a3e9601ac9dd813c2d4ec08ae591a7c18007477a744f3e4adcb2ccff376605cbd6e990f5ef2b7ea76651cb48b38a6f06ba8b3d3536df0e40e5a1e3dd89ab649c01159e93eaf94f9ef58bf2c2bbe5c3a3e313634f7d20e46696848dd4ca7252dcb893d4a53e6e42568046778649fef3b45b37fcb80cd763ac3c6ff0bebeb413e734e506bf17486ec02694ddedf4da9725abd69bc38ceb1709fc035a2f198550c4e6357194adc5cf08cf693bc331ecf1fa80668f14de5621129b0cdf924806cedbeb2854278ba9ef0cf4a0cc845960ed1865ca670cd11fcf594bce0727086aea53dc47b34ee40bff9a7d6b0d2f2d60d78b22f5304309e6df0103272db574525d08c75a44250f2c148f48ea1899d1ccc5dc65a53d2594a9c7ad3ea4f6e6bda770d4dc9b26cb3170af3ea4b68d21316735358667d1026c3676c920f60f30418319f5e13390bc7b8c9b8a68309eedf488c9` }
+                      OCTET_STRING { `2bb00faec7e06e52` }
+                    `0000`
+                  `0000`
+                `0000`
+              `0000`
+            `0000`
+          `0000`
+        }
+      `0000`
+    `0000`
+  `0000`
+  SEQUENCE {
+    SEQUENCE {
+      SEQUENCE {
+        OBJECT_IDENTIFIER { 1.3.14.3.2.26 }
+        NULL {}
+      }
+      OCTET_STRING { `e0f7a11bf63f05ad556a204c71ca62471328d505` }
+    }
+    OCTET_STRING { `3e872d96ea804bab3ab9ee096528bc8d` }
+    INTEGER { 2000 }
+  }
+`0000`
