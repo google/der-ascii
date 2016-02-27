@@ -3,8 +3,8 @@
 # This specification is a valid DER ASCII file.
 
 
-# A DER ASCII file is a sequence of tokens. Most tokens are byte tokens and
-# resolve to a byte string which is emitted as soon as it is processed.
+# A DER ASCII file is a sequence of tokens. Most tokens resolve to a byte
+# string which is emitted as soon as it is processed.
 
 # Tokens are separated by whitespace, which is defined to be space (0x20), TAB
 # (0x09), CR (0x0d), and LF (0x0a). Apart from acting as a token separator,
@@ -18,12 +18,12 @@
 
 "Quoted strings are delimited by double quotes. Backslash denotes escape
 sequences. Legal escape sequences are: \\ \" \x00 \n. \x00 consumes two hex
-digits and emits a byte. Otherwise, any byte before the closing quote, including
-newlines, is emitted as-is."
+digits and emits a byte. Otherwise, any byte before the closing quote,
+including a newline, is emitted as-is."
 
-# Objects in the file are emitted one after another, so:
+# Tokens in the file are emitted one after another, so the following lines
+# produce the same output:
 "hello world"
-# produces the same output as:
 "hello " "world"
 
 
@@ -40,31 +40,32 @@ newlines, is emitted as-is."
 # Integers.
 
 # Tokens which match /-?[0-9]+/ are integer tokens. They emit the contents of
-# that integer's encoding as a DER INTEGER. (Big-endian, base-256,
+# the value's DER encoding as an INTEGER. (Big-endian, base-256,
 # two's-complement, and minimally-encoded.)
 456
 
 
-# OIDs.
+# Object identifiers.
 
-# Tokens which match /[0-9]+(\.[0-9]+)+/ are OID tokens. They emits the contents
-# of that OID's encoding as a DER OBJECT IDENTIFIER.
+# Tokens which match /[0-9]+(\.[0-9]+)+/ are object identifier (OID) tokens.
+# They emits the contents of the value's DER encoding as an OBJECT IDENTIFIER.
 1.2.840.113554.4.1.72585
 
 
 # Tag expressions.
 
-# Square brackets denote a tag expression, as in ASN.1. Unlike ASN.1, the
-# constructed bit is treated as part of the tag.
+# Square brackets denote a tag expression, similar to ASN.1's syntax. Unlike
+# ASN.1, the constructed bit is treated as part of the tag.
 #
-# A tag expression contains one to three components separated by space. The
-# components are an optional tag class, a decimal tag number, and an optional
-# constructed bit. By default, tags have class context-specific and set the
-# constructed bit. Alternatively, the first two components may be replaced by a
-# type name (see below).
+# A tag expression contains one to three components separated by space (0x20):
+# an optional tag class, a decimal tag number, and an optional constructed bit.
+# By default, tags have class context-specific and set the constructed bit.
+# Alternatively, the first two components may be replaced by a type name (see
+# below).
 #
-# A tag expression emits the DER encoding of that tag. Note that it does not
-# emit an element body. Those are specified separatedly.
+# A tag expression emits the tag portion of a DER element with the specified
+# tag class, tag number, and constructed bit. Note that it does not emit an
+# element body. Those are specified separatedly.
 #
 # Examples:
 [0]
@@ -83,8 +84,8 @@ SEQUENCE
 OCTET_STRING
 
 # Within a tag expression, type names may also be used in place of the class
-# and tag number. This also switches the default constructed bit to that tag's
-# constructed bit.
+# and tag number. If unspecified, the constructed bit is CONSTRUCTED for
+# SEQUENCE and SET and PRIMITIVE otherwise.
 [SEQUENCE PRIMITIVE]
 [OCTET_STRING CONSTRUCTED]
 [INTEGER] # This is the same as INTEGER
@@ -93,9 +94,13 @@ OCTET_STRING
 
 # Length prefixes.
 
-# Matching curly braces denote length prefixes. They emit a DER-encoded length
-# prefix followed by the encoding of the brace contents. There is no requirement
-# that braces correspond to tags, but non-garbage outputs should pair them up.
+# Matching curly brace tokens denote length prefixes. They emit a DER-encoded
+# length prefix followed by the encoding of the brace contents.
+#
+# Tag expessions should always be followed by a length prefix to emit a valid
+# DER element, but there is no requirement to do so. See below for examples of
+# intentionally malformed test inputs where tags and length prefixes do not
+# match.
 
 # This is an OID.
 OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585 }
@@ -130,10 +135,14 @@ SEQUENCE {
   OCTET_STRING { "world" }
 }
 
-# Implicit tagging is written without the underlying tag, as in DER. This is an
-# implicitly-tagged INTEGER. Note that the constructed bit must be set
-# accordingly for a correct encoding.
-[0 PRIMITIVE] { 1 }
+# Implicit tagging is written without the underlying tag, as in the DER
+# encoding. Note that the constructed bit must match the underlying tag for a
+# correct encoding.
+[0 PRIMITIVE] { 1 }  # [0] IMPLICIT INTEGER.
+[0] {  # [0] IMPLICIT SEQUENCE OF INTEGER.
+  INTEGER { 1 }
+  INTEGER { `00ff` }
+}
 
 
 # Examples.
