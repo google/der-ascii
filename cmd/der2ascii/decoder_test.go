@@ -130,7 +130,7 @@ func TestParseTagAndLength(t *testing.T) {
 			if !ok {
 				t.Errorf("%d. parseTagAndLength(%v) unexpectedly failed.", i, in)
 			} else if tag != tt.tag || length != tt.length || indefinite != tt.indefinite || !bytes.Equal(rest, in[len(tt.in):]) {
-				t.Errorf("%d. parseTagAndLength(%v) = %v, %v, %v, %v wanted %v, %v.", i, in, tag, length, indefinite, rest, tt.tag, tt.length, tt.indefinite, in[len(tt.in):])
+				t.Errorf("%d. parseTagAndLength(%v) = %v, %v, %v, %v wanted %v, %v, %v, %v.", i, in, tag, length, indefinite, rest, tt.tag, tt.length, tt.indefinite, in[len(tt.in):])
 			}
 		}
 	}
@@ -177,7 +177,7 @@ func TestParseElement(t *testing.T) {
 			if !ok {
 				t.Errorf("%d. parseElement(%v) unexpectedly failed.", i, in)
 			} else if tag != tt.tag || !bytes.Equal(body, tt.body) || indefinite != tt.indefinite || !bytes.Equal(rest, in[len(tt.in):]) {
-				t.Errorf("%d. parseElement(%v) = %v, %v, %v, %v wanted %v, %v.", i, in, tag, body, indefinite, rest, tt.tag, tt.body, tt.indefinite, in[len(tt.in):])
+				t.Errorf("%d. parseElement(%v) = %v, %v, %v, %v wanted %v, %v, %v, %v.", i, in, tag, body, indefinite, rest, tt.tag, tt.body, tt.indefinite, in[len(tt.in):])
 			}
 		}
 	}
