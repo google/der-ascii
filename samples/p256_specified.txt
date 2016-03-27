@@ -8,6 +8,7 @@
 SEQUENCE {
   INTEGER { 1 }
   SEQUENCE {
+    # prime-field
     OBJECT_IDENTIFIER { 1.2.840.10045.1.1 }
     INTEGER { `00ffffffff00000001000000000000000000000000ffffffffffffffffffffffff` }
   }

@@ -5,22 +5,26 @@
 SEQUENCE `80`
   INTEGER { 3 }
   SEQUENCE `80`
+    # data
     OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
     [0] `80`
       [OCTET_STRING CONSTRUCTED] `80`
         OCTET_STRING {
           SEQUENCE `80`
             SEQUENCE `80`
+              # data
               OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
               [0] `80`
                 [OCTET_STRING CONSTRUCTED] `80`
                   OCTET_STRING {
                     SEQUENCE {
                       SEQUENCE {
+                        # pkcs-8ShroudedKeyBag
                         OBJECT_IDENTIFIER { 1.2.840.113549.1.12.10.1.2 }
                         [0] {
                           SEQUENCE {
                             SEQUENCE {
+                              # pbeWithSHAAnd3-KeyTripleDES-CBC
                               OBJECT_IDENTIFIER { 1.2.840.113549.1.12.1.3 }
                               SEQUENCE {
                                 OCTET_STRING { `ac718a7c89cfa8b0d6d107f0834f7ad0` }
@@ -32,12 +36,14 @@ SEQUENCE `80`
                         }
                         SET {
                           SEQUENCE {
+                            # friendlyName
                             OBJECT_IDENTIFIER { 1.2.840.113549.1.9.20 }
                             SET {
                               BMPString { `0049006e007400650072006e006500740020005700690064006700690074007300200050007400790020004c00740064` }
                             }
                           }
                           SEQUENCE {
+                            # localKeyId
                             OBJECT_IDENTIFIER { 1.2.840.113549.1.9.21 }
                             SET {
                               OCTET_STRING { `14742d528e0d0c066c3264d37e3331688b281a75` }
@@ -51,13 +57,16 @@ SEQUENCE `80`
               `0000`
             `0000`
             SEQUENCE `80`
+              # encryptedData
               OBJECT_IDENTIFIER { 1.2.840.113549.1.7.6 }
               [0] `80`
                 SEQUENCE `80`
                   INTEGER { 0 }
                   SEQUENCE `80`
+                    # data
                     OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
                     SEQUENCE {
+                      # pbewithSHAAnd40BitRC2-CBC
                       OBJECT_IDENTIFIER { 1.2.840.113549.1.12.1.6 }
                       SEQUENCE {
                         OCTET_STRING { `9d1b688e11c2b2d6d0e95a9e96c18ca6` }
@@ -80,6 +89,7 @@ SEQUENCE `80`
   SEQUENCE {
     SEQUENCE {
       SEQUENCE {
+        # sha1
         OBJECT_IDENTIFIER { 1.3.14.3.2.26 }
         NULL {}
       }

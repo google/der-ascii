@@ -5,6 +5,7 @@ SEQUENCE {
   INTEGER { 1 }
   OCTET_STRING { `070f08727ad4a04a9cdd59c94d89687708b56fc95d30770ee8d1c9ce0a8bb46a` }
   [0] {
+    # secp256r1
     OBJECT_IDENTIFIER { 1.2.840.10045.3.1.7 }
   }
   [1] {

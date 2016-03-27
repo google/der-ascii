@@ -214,6 +214,9 @@ func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []
 			case "INTEGER":
 				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), integerToString(body)))
 			case "OBJECT_IDENTIFIER":
+				if name, ok := objectIdentifierToName(body); ok {
+					addLine(out, indent, fmt.Sprintf("# %s", name))
+				}
 				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), objectIdentifierToString(body)))
 			case "BIT_STRING":
 				// X.509 encodes signatures and SPKIs in BIT

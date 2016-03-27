@@ -8,24 +8,28 @@ SEQUENCE {
     }
     INTEGER { `00fbb04c2eab109b0c` }
     SEQUENCE {
+      # sha1WithRSAEncryption
       OBJECT_IDENTIFIER { 1.2.840.113549.1.1.5 }
       NULL {}
     }
     SEQUENCE {
       SET {
         SEQUENCE {
+          # countryName
           OBJECT_IDENTIFIER { 2.5.4.6 }
           PrintableString { "AU" }
         }
       }
       SET {
         SEQUENCE {
+          # stateOrProvinceName
           OBJECT_IDENTIFIER { 2.5.4.8 }
           UTF8String { "Some-State" }
         }
       }
       SET {
         SEQUENCE {
+          # organizationName
           OBJECT_IDENTIFIER { 2.5.4.10 }
           UTF8String { "Internet Widgits Pty Ltd" }
         }
@@ -38,18 +42,21 @@ SEQUENCE {
     SEQUENCE {
       SET {
         SEQUENCE {
+          # countryName
           OBJECT_IDENTIFIER { 2.5.4.6 }
           PrintableString { "AU" }
         }
       }
       SET {
         SEQUENCE {
+          # stateOrProvinceName
           OBJECT_IDENTIFIER { 2.5.4.8 }
           UTF8String { "Some-State" }
         }
       }
       SET {
         SEQUENCE {
+          # organizationName
           OBJECT_IDENTIFIER { 2.5.4.10 }
           UTF8String { "Internet Widgits Pty Ltd" }
         }
@@ -57,6 +64,7 @@ SEQUENCE {
     }
     SEQUENCE {
       SEQUENCE {
+        # rsaEncryption
         OBJECT_IDENTIFIER { 1.2.840.113549.1.1.1 }
         NULL {}
       }
@@ -71,12 +79,14 @@ SEQUENCE {
     [3] {
       SEQUENCE {
         SEQUENCE {
+          # subjectKeyIdentifier
           OBJECT_IDENTIFIER { 2.5.29.14 }
           OCTET_STRING {
             OCTET_STRING { `8b75d5accb08be0e1f65b7fa56be6ca775da85af` }
           }
         }
         SEQUENCE {
+          # authorityKeyIdentifier
           OBJECT_IDENTIFIER { 2.5.29.35 }
           OCTET_STRING {
             SEQUENCE {
@@ -85,6 +95,7 @@ SEQUENCE {
           }
         }
         SEQUENCE {
+          # basicConstraints
           OBJECT_IDENTIFIER { 2.5.29.19 }
           OCTET_STRING {
             SEQUENCE {
@@ -96,6 +107,7 @@ SEQUENCE {
     }
   }
   SEQUENCE {
+    # sha1WithRSAEncryption
     OBJECT_IDENTIFIER { 1.2.840.113549.1.1.5 }
     NULL {}
   }
