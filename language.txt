@@ -48,7 +48,7 @@ including a newline, is emitted as-is."
 # Object identifiers.
 
 # Tokens which match /[0-9]+(\.[0-9]+)+/ are object identifier (OID) tokens.
-# They emits the contents of the value's DER encoding as an OBJECT IDENTIFIER.
+# They emit the contents of the value's DER encoding as an OBJECT IDENTIFIER.
 1.2.840.113554.4.1.72585
 
 
@@ -191,7 +191,7 @@ SEQUENCE `aabbcc`
 # 1. Raw byte strings are encoded heuristically as quoted strings or hex
 #    literals depending on what fraction is printable ASCII.
 #
-# 2. Greedly parse BER elements out of the input. Indefinite-length encoding is
+# 2. Greedily parse BER elements out of the input. Indefinite-length encoding is
 #    legal. On parse error, encode the remaining bytes as in step 1.
 #
 # 3. Minimally encode the tag in the BER element followed by the body in curly
