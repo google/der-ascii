@@ -1,7 +1,7 @@
 # Certificates
 
 Modifying and creating X.509 certificates is more involved than modifying a
-normal DER structure if one wishes the keep the signature valid. This document
+normal DER structure if one wishes to keep the signature valid. This document
 provides instructions for fixing up a modified test certificate's signature if
 the issuer's private key is available. (For a non-test certificate, this is the
 CA's private key and is presumably unavailable.)
@@ -15,7 +15,7 @@ The basic top-level structure is:
          signatureValue       BIT STRING  }
 
 The `tbsCertificate` is a large structure with the contents of the certificate.
-This includes the subject, issuer, public key, etc. The `signatureAlgorithm` is
+This includes the subject, issuer, public key, etc. The `signatureAlgorithm`
 specifies the signature algorithm and parameters. Finally, the `signatureValue`
 is the signature itself, created from the issuer's private key. This is the
 field that must be fixed once the `tbsCertificate` is modified.
