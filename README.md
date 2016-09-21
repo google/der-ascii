@@ -15,7 +15,7 @@ byte string and vice versa. To install them, run:
 
     go get github.com/google/der-ascii/cmd/...
 
-These tools may be used create test inputs by taking an existing DER or BER
+These tools may be used to create test inputs by taking an existing DER or BER
 structure, disassembling it with `der2ascii` into DER ASCII, making
 adjustments, and assembling back into binary with `ascii2der`. This avoids
 having to manually fix up all the length prefixes.  As a bonus, it acts as a
