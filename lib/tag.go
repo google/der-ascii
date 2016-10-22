@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package lib contains common routines between der2ascii and ascii2der.
+// Package lib contains common routines between der2ascii and ascii2der.
 package lib
 
 type Class byte
