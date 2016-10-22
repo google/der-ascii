@@ -126,12 +126,22 @@ var derToASCIITests = []convertFuncTest{
 	// BIT STRINGs are encoded normally if the contents are not an element.
 	{
 		[]byte{0x03, 0x03, 0x00, 0x00, 0x00},
-		"BIT_STRING { `000000` }\n",
+		"BIT_STRING { `00` `0000` }\n",
 	},
 	// BIT STRINGs are encoded normally if the leading byte is non-zero.
 	{
 		[]byte{0x03, 0x05, 0x01, 0x30, 0x80, 0x00, 0x00},
-		"BIT_STRING { `0130800000` }\n",
+		"BIT_STRING { `01` `30800000` }\n",
+	},
+	// BIT STRINGs do not attempt to separate the leading byte if invalid.
+	{
+		[]byte{0x03, 0x05, 0xff, 0x30, 0x80, 0x00, 0x00},
+		"BIT_STRING { `ff30800000` }\n",
+	},
+	// Empty BIT STRINGs do not emit extra whitspace.
+	{
+		[]byte{0x03, 0x01, 0x00},
+		"BIT_STRING { `00` }\n",
 	},
 	// OBJECT IDENTIFIERs are pretty-printed if possible.
 	{

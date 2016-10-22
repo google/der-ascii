@@ -229,16 +229,20 @@ func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []
 				}
 				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), encoded))
 			case "BIT_STRING":
-				// X.509 encodes signatures and SPKIs in BIT
-				// STRINGs, so there is a 0 phase byte followed
-				// by the potentially DER-encoded structure.
 				if len(body) > 1 && body[0] == 0 && isMadeOfElements(body[1:]) {
+					// X.509 signatures and SPKIs are always logically treated
+					// as byte strings, but mistakenly encoded as a BIT STRING.
+					// In some cases, these byte strings are DER-encoded
+					// structures themselves. Keep parsing if this is detected.
 					addLine(out, indent, fmt.Sprintf("%s {", tagToString(tag)))
-					// Emit the phase byte.
+					// Emit number of unused bits.
 					addLine(out, indent+1, "`00`")
 					// Emit the remaining as a DER element.
 					derToASCIIImpl(out, body[1:], indent+1, false) // Adds a trailing newline.
 					addLine(out, indent, "}")
+				} else if len(body) > 1 && body[0] < 8 {
+					// The first byte is the number of unused bits.
+					addLine(out, indent, fmt.Sprintf("%s { %s %s }", tagToString(tag), bytesToString(body[:1]), bytesToString(body[1:])))
 				} else {
 					addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), bytesToString(body)))
 				}

@@ -218,12 +218,11 @@ SEQUENCE `aabbcc`
 #    c. If the tag is BOOLEAN and the body is valid, encode as TRUE or FALSE.
 #       Otherwise a hex literal.
 #
-#    d. If the tag is BIT STRING, the body's first byte is 00 and the remainder
-#       may be parsed as a series of BER elements without trailing data, emit
-#       `00` and recurse into the remainder of the body. Otherwise, emit the
-#       body as a raw byte string. This is to account for X.509 incorrectly
-#       using BIT STRING instead of OCTET STRING for SubjectPublicKeyInfo and
-#       signatures.
+#    d. If the tag is BIT STRING and the body is non-empty, encode the first
+#       byte as a separate hex literal. If this value is non-zero, encode the
+#       remainder as a raw byte string. Otherwise, apply step e to encode body.
+#       This is to account for X.509 incorrectly using BIT STRING instead of
+#       OCTET STRING for SubjectPublicKeyInfo and signatures.
 #
 #    e. Otherwise, if the body may be parsed as a series of BER elements without
 #       trailing data, recurse into the body. If not, encode it as a raw byte
