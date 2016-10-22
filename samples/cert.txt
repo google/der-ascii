@@ -99,7 +99,7 @@ SEQUENCE {
           OBJECT_IDENTIFIER { 2.5.29.19 }
           OCTET_STRING {
             SEQUENCE {
-              BOOLEAN { `ff` }
+              BOOLEAN { TRUE }
             }
           }
         }

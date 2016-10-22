@@ -41,7 +41,7 @@ var scannerTests = []struct {
 }{
 	{
 		`# First, the basic kinds of tokens.
-SEQUENCE [SEQUENCE] 1 -1 1.2.3.4 ` + "`aabbcc`" + ` "hello" { }
+SEQUENCE [SEQUENCE] 1 -1 1.2.3.4 ` + "`aabbcc`" + ` "hello" TRUE FALSE { }
 
 # Tokens can be bunched up together.
 SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
@@ -62,6 +62,8 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 			{Kind: tokenBytes, Value: []byte{42, 3, 4}},
 			{Kind: tokenBytes, Value: []byte{0xaa, 0xbb, 0xcc}},
 			{Kind: tokenBytes, Value: []byte("hello")},
+			{Kind: tokenBytes, Value: []byte{0xff}},
+			{Kind: tokenBytes, Value: []byte{0x00}},
 			{Kind: tokenLeftCurly},
 			{Kind: tokenRightCurly},
 			{Kind: tokenBytes, Value: []byte{0x30}},
@@ -85,6 +87,8 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 	// Garbage tokens.
 	{"SEQUENC", nil, false},
 	{"1...2", nil, false},
+	{"true", nil, false},
+	{"false", nil, false},
 	// Unmatched [.
 	{"[SEQUENCE", nil, false},
 	// Unmatched ".

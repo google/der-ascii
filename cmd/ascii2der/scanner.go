@@ -217,6 +217,14 @@ loop:
 		return token{Kind: tokenBytes, Value: der, Pos: s.pos}, nil
 	}
 
+	if symbol == "TRUE" {
+		return token{Kind: tokenBytes, Value: []byte{0xff}, Pos: s.pos}, nil
+	}
+
+	if symbol == "FALSE" {
+		return token{Kind: tokenBytes, Value: []byte{0x00}, Pos: s.pos}, nil
+	}
+
 	return token{}, fmt.Errorf("unrecognized symbol '%s'", symbol)
 }
 

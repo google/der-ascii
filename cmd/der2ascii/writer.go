@@ -218,6 +218,16 @@ func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []
 					addLine(out, indent, fmt.Sprintf("# %s", name))
 				}
 				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), objectIdentifierToString(body)))
+			case "BOOLEAN":
+				var encoded string
+				if len(body) == 1 && body[0] == 0x00 {
+					encoded = "FALSE"
+				} else if len(body) == 1 && body[0] == 0xff {
+					encoded = "TRUE"
+				} else {
+					encoded = bytesToHexString(body)
+				}
+				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), encoded))
 			case "BIT_STRING":
 				// X.509 encodes signatures and SPKIs in BIT
 				// STRINGs, so there is a 0 phase byte followed

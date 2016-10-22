@@ -52,6 +52,13 @@ including a newline, is emitted as-is."
 1.2.840.113554.4.1.72585
 
 
+# Booleans.
+
+# The following tokens emit `ff` and `00`, respectively.
+TRUE
+FALSE
+
+
 # Tag expressions.
 
 # Square brackets denote a tag expression, similar to ASN.1's syntax. Unlike
@@ -208,13 +215,16 @@ SEQUENCE `aabbcc`
 #    b. If the tag is OBJECT IDENTIFIER and the body is a valid OID, encode as
 #       an OID. Otherwise a hex literal.
 #
-#    c. If the tag is BIT STRING, the body's first byte is 00 and the remainder
+#    c. If the tag is BOOLEAN and the body is valid, encode as TRUE or FALSE.
+#       Otherwise a hex literal.
+#
+#    d. If the tag is BIT STRING, the body's first byte is 00 and the remainder
 #       may be parsed as a series of BER elements without trailing data, emit
 #       `00` and recurse into the remainder of the body. Otherwise, emit the
 #       body as a raw byte string. This is to account for X.509 incorrectly
 #       using BIT STRING instead of OCTET STRING for SubjectPublicKeyInfo and
 #       signatures.
 #
-#    d. Otherwise, if the body may be parsed as a series of BER elements without
+#    e. Otherwise, if the body may be parsed as a series of BER elements without
 #       trailing data, recurse into the body. If not, encode it as a raw byte
 #       string.
