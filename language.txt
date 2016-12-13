@@ -104,7 +104,7 @@ OCTET_STRING
 # Matching curly brace tokens denote length prefixes. They emit a DER-encoded
 # length prefix followed by the encoding of the brace contents.
 #
-# Tag expessions should always be followed by a length prefix to emit a valid
+# Tag expressions should always be followed by a length prefix to emit a valid
 # DER element, but there is no requirement to do so. See below for examples of
 # intentionally malformed test inputs where tags and length prefixes do not
 # match.
