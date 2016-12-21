@@ -21,6 +21,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/google/der-ascii/lib"
 )
@@ -77,6 +79,128 @@ func newScanner(text string) *scanner {
 	return &scanner{text: text, pos: position{Line: 1}}
 }
 
+func (s *scanner) parseEscapeSequence() (rune, error) {
+	s.advance() // Skip the \. The caller is assumed to have validated it.
+	if s.isEOF() {
+		return 0, &parseError{s.pos, errors.New("expected escape character")}
+	}
+	switch c := s.text[s.pos.Offset]; c {
+	case 'n':
+		s.advance()
+		return '\n', nil
+	case '"', '\\':
+		s.advance()
+		return rune(c), nil
+	case 'x':
+		s.advance()
+		if s.pos.Offset+2 > len(s.text) {
+			return 0, &parseError{s.pos, errors.New("unfinished escape sequence")}
+		}
+		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+2])
+		if err != nil {
+			return 0, &parseError{s.pos, err}
+		}
+		s.advanceBytes(2)
+		return rune(b[0]), nil
+	case 'u':
+		s.advance()
+		if s.pos.Offset+4 > len(s.text) {
+			return 0, &parseError{s.pos, errors.New("unfinished escape sequence")}
+		}
+		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+4])
+		if err != nil {
+			return 0, &parseError{s.pos, err}
+		}
+		s.advanceBytes(4)
+		return rune(b[0])<<8 | rune(b[1]), nil
+	case 'U':
+		s.advance()
+		if s.pos.Offset+8 > len(s.text) {
+			return 0, &parseError{s.pos, errors.New("unfinished escape sequence")}
+		}
+		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+8])
+		if err != nil {
+			return 0, &parseError{s.pos, err}
+		}
+		s.advanceBytes(8)
+		return rune(b[0])<<24 | rune(b[1])<<16 | rune(b[2])<<8 | rune(b[3]), nil
+	default:
+		return 0, &parseError{s.pos, fmt.Errorf("unknown escape sequence \\%c", c)}
+	}
+}
+
+func (s *scanner) parseQuotedString() (token, error) {
+	s.advance() // Skip the ". The caller is assumed to have validated it.
+	start := s.pos
+	var bytes []byte
+	for {
+		if s.isEOF() {
+			return token{}, &parseError{start, errors.New("unmatched \"")}
+		}
+		switch c := s.text[s.pos.Offset]; c {
+		case '"':
+			s.advance()
+			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
+		case '\\':
+			escapeStart := s.pos
+			r, err := s.parseEscapeSequence()
+			if err != nil {
+				return token{}, err
+			}
+			if r > 0xff {
+				// TODO(davidben): Alternatively, should these encode as UTF-8?
+				return token{}, &parseError{escapeStart, errors.New("illegal escape for quoted string")}
+			}
+			bytes = append(bytes, byte(r))
+		default:
+			s.advance()
+			bytes = append(bytes, c)
+		}
+	}
+}
+
+func appendUTF16(b []byte, r rune) []byte {
+	if r <= 0xffff {
+		// Note this logic intentionally tolerates unpaired surrogates.
+		return append(b, byte(r>>8), byte(r&0xff))
+	}
+
+	r1, r2 := utf16.EncodeRune(r)
+	b = append(b, byte(r1>>8), byte(r1&0xff))
+	b = append(b, byte(r2>>8), byte(r2&0xff))
+	return b
+}
+
+func (s *scanner) parseUTF16String() (token, error) {
+	s.advance() // Skip the u. The caller is assumed to have validated it.
+	s.advance() // Skip the ". The caller is assumed to have validated it.
+	start := s.pos
+	var bytes []byte
+	for {
+		if s.isEOF() {
+			return token{}, &parseError{start, errors.New("unmatched \"")}
+		}
+		switch c := s.text[s.pos.Offset]; c {
+		case '"':
+			s.advance()
+			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
+		case '\\':
+			r, err := s.parseEscapeSequence()
+			if err != nil {
+				return token{}, err
+			}
+			bytes = appendUTF16(bytes, r)
+		default:
+			r, n := utf8.DecodeRuneInString(s.text[s.pos.Offset:])
+			if r == utf8.RuneError {
+				return token{}, &parseError{s.pos, errors.New("invalid UTF-8")}
+			}
+			s.advanceBytes(n)
+			bytes = appendUTF16(bytes, r)
+		}
+	}
+}
+
 func (s *scanner) Next() (token, error) {
 again:
 	if s.isEOF() {
@@ -106,45 +230,10 @@ again:
 		s.advance()
 		return token{Kind: tokenRightCurly, Pos: s.pos}, nil
 	case '"':
-		s.advance()
-		start := s.pos
-		var bytes []byte
-		for {
-			if s.isEOF() {
-				return token{}, &parseError{start, errors.New("unmatched \"")}
-			}
-			switch c := s.text[s.pos.Offset]; c {
-			case '"':
-				s.advance()
-				return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
-			case '\\':
-				s.advance()
-				if s.isEOF() {
-					return token{}, &parseError{s.pos, errors.New("expected escape character")}
-				}
-				switch c2 := s.text[s.pos.Offset]; c2 {
-				case 'n':
-					bytes = append(bytes, '\n')
-				case '"', '\\':
-					bytes = append(bytes, c2)
-				case 'x':
-					s.advance()
-					if s.pos.Offset+2 > len(s.text) {
-						return token{}, &parseError{s.pos, errors.New("unfinished escape sequence")}
-					}
-					b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+2])
-					if err != nil {
-						return token{}, &parseError{s.pos, err}
-					}
-					bytes = append(bytes, b[0])
-					s.advance()
-				default:
-					return token{}, &parseError{s.pos, fmt.Errorf("unknown escape sequence \\%c", c2)}
-				}
-			default:
-				bytes = append(bytes, c)
-			}
-			s.advance()
+		return s.parseQuotedString()
+	case 'u':
+		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '"' {
+			return s.parseUTF16String()
 		}
 	case '`':
 		s.advance()
@@ -241,6 +330,12 @@ func (s *scanner) advance() {
 			s.pos.Column++
 		}
 		s.pos.Offset++
+	}
+}
+
+func (s *scanner) advanceBytes(n int) {
+	for i := 0; i < n; i++ {
+		s.advance()
 	}
 }
 

@@ -105,14 +105,82 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 	{"[THIS IS NOT A VALID TAG]", nil, false},
 	// Bad hex bytes.
 	{"`hi there!`", nil, false},
+	// UTF-16 literals are parsed correctly.
+	{
+		`u""`,
+		[]token{
+			{Kind: tokenBytes, Value: []byte{}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		`u"a☃𝄞"`,
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x00, 0x61, 0x26, 0x03, 0xd8, 0x34, 0xdd, 0x1e}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		// The same as above, but written with escape characters.
+		`u"\x61\u2603\U0001d11e"`,
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x00, 0x61, 0x26, 0x03, 0xd8, 0x34, 0xdd, 0x1e}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		// The same as above, but the large character is written as unpaired surrogates.
+		`u"\x61\u2603\ud834\udd1e"`,
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x00, 0x61, 0x26, 0x03, 0xd8, 0x34, 0xdd, 0x1e}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		`u"\n\"\\"`,
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x00, 0x0a, 0x00, 0x22, 0x00, 0x5c}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	// Invalid UTF-8 is illegal in a UTF-16 literal.
+	{"u\"\xff\xff\xff\xff\"", nil, false},
 	// Bad or truncated escape sequences.
 	{`"\`, nil, false},
 	{`"\x`, nil, false},
+	{`"\u`, nil, false},
+	{`"\U`, nil, false},
 	{`"\x1`, nil, false},
+	{`"\u123`, nil, false},
+	{`"\U1234567`, nil, false},
 	{`"\x??"`, nil, false},
+	{`"\u????"`, nil, false},
+	{`"\U????????"`, nil, false},
 	{`"\?"`, nil, false},
+	{`u"\`, nil, false},
+	{`u"\x`, nil, false},
+	{`u"\u`, nil, false},
+	{`u"\U`, nil, false},
+	{`u"\x1`, nil, false},
+	{`u"\u123`, nil, false},
+	{`u"\U1234567`, nil, false},
+	{`u"\x??"`, nil, false},
+	{`u"\u????"`, nil, false},
+	{`u"\U????????"`, nil, false},
+	{`u"\?"`, nil, false},
+	// Long escape sequences are forbidden in byte strings.
+	{`"\u1234"`, nil, false},
+	{`"\U12345678"`, nil, false},
 	// Tokenization works up to a syntax error.
 	{`"hello" "world`, []token{{Kind: tokenBytes, Value: []byte("hello")}}, false},
+	// Unterminated quotes.
+	{`"hello`, nil, false},
+	{`u"hello`, nil, false},
 }
 
 func scanAll(in string) (tokens []token, ok bool) {

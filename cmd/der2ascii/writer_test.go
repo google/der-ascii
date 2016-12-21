@@ -176,6 +176,32 @@ var derToASCIITests = []convertFuncTest{
 		[]byte{0x01, 0x01, 0x42},
 		"BOOLEAN { `42` }\n",
 	},
+	// BMPStrings decode into UTF-16 literals.
+	{
+		[]byte("\x1e\x14\x00h\x00e\x00l\x00l\x00o\x00 \x26\x03\x00 \xd8\x34\xdd\x1e"),
+		"BMPString { u\"hello ☃ 𝄞\" }\n",
+	},
+	// Non-printable UTF-16 characters are escaped in the smallest form
+	// which fits them.
+	{
+		[]byte("\x1e\x08\x00\x00\xe0\x00\xdb\x80\xdc\x00"),
+		`BMPString { u"\x00\ue000\U000f0000" }` + "\n",
+	},
+	// Odd-length BMPStrings get an extra hex literal at the end.
+	{
+		[]byte("\x1e\x0b\x00h\x00e\x00l\x00l\x00o "),
+		"BMPString { u\"hello\" `\\x20` }\n",
+	},
+	// Unpaired surrogates are tolerated, but always escaped.
+	{
+		[]byte("\x1e\x1a\x00h\x00e\x00l\x00l\x00o\x00 \xd8\x34\x00 \x00w\x00o\x00r\x00l\x00d"),
+		"BMPString { u\"hello \\ud834 world\" }\n",
+	},
+	// Special escape sequences are used.
+	{
+		[]byte("\x1e\x06\x00\n\x00\"\x00\\"),
+		`BMPString { u"\n\"\\" }` + "\n",
+	},
 	// By default, data is decoded as a string or hex literal depending on contents.
 	{
 		[]byte("\x04\x0bhello world"),

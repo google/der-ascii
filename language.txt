@@ -27,6 +27,17 @@ including a newline, is emitted as-is."
 "hello " "world"
 
 
+# UTF-16 literals.
+
+u"A quoted string beginning with 'u' is a UTF-16 literal. Uescaped
+octets are interpreted as UTF-8 and then encoded as big-endian UTF-16. Legal escape
+sequences are: \\ \" \n \x00 \u0000 \U00000000. The last three forms differ
+only in the number of hex digests they consume. If the value is 0xffff or
+below, it emits the value as a big-endian 16-bit integer. Otherwise, it emits
+the big-endian UTF-16 encoding. (The two cases are identical except unpaired
+high or low surrogates are legal.)"
+
+
 # Hex literals.
 
 # Backticks denote hex literals. Either uppercase or lowercase is legal, but no
@@ -224,6 +235,11 @@ SEQUENCE `aabbcc`
 #       This is to account for X.509 incorrectly using BIT STRING instead of
 #       OCTET STRING for SubjectPublicKeyInfo and signatures.
 #
-#    e. Otherwise, if the body may be parsed as a series of BER elements without
+#    e. If the tag is BMPString, decode the body as UTF-16 and encode as a
+#       UTF-16 literal. Unpaired surrogates and unprintable code points are
+#       escaped. If there is a byte left over, encode it in an additional hex
+#       literal.
+#
+#    f. Otherwise, if the body may be parsed as a series of BER elements without
 #       trailing data, recurse into the body. If not, encode it as a raw byte
 #       string.

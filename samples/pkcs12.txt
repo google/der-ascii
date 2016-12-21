@@ -39,7 +39,7 @@ SEQUENCE `80`
                             # friendlyName
                             OBJECT_IDENTIFIER { 1.2.840.113549.1.9.20 }
                             SET {
-                              BMPString { `0049006e007400650072006e006500740020005700690064006700690074007300200050007400790020004c00740064` }
+                              BMPString { u"Internet Widgits Pty Ltd" }
                             }
                           }
                           SEQUENCE {

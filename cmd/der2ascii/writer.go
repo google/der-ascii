@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strconv"
 	"unicode"
+	"unicode/utf16"
 
 	"github.com/google/der-ascii/lib"
 )
@@ -128,6 +129,49 @@ func bytesToQuotedString(in []byte) string {
 		}
 	}
 	out.WriteString(`"`)
+	return out.String()
+}
+
+func bytesToUTF16String(in []byte) string {
+	var out bytes.Buffer
+	out.WriteString(`u"`)
+	for i := 0; i < len(in)/2; i++ {
+		u := rune(in[2*i])<<8 | rune(in[2*i+1])
+		if utf16.IsSurrogate(u) && i+1 < len(in)/2 {
+			u2 := rune(in[2*i+2])<<8 | rune(in[2*i+3])
+			r := utf16.DecodeRune(u, u2)
+			if r != unicode.ReplacementChar {
+				if unicode.IsPrint(r) {
+					out.WriteRune(r)
+				} else {
+					fmt.Fprintf(&out, `\U%08x`, r)
+				}
+				i++
+				continue
+			}
+		}
+
+		if u == '\n' {
+			out.WriteString(`\n`)
+		} else if u == '"' {
+			out.WriteString(`\"`)
+		} else if u == '\\' {
+			out.WriteString(`\\`)
+		} else if !utf16.IsSurrogate(u) && unicode.IsPrint(u) {
+			out.WriteRune(u)
+		} else if u <= 0xff {
+			fmt.Fprintf(&out, `\x%02x`, u)
+		} else {
+			fmt.Fprintf(&out, `\u%04x`, u)
+		}
+	}
+	out.WriteString(`"`)
+
+	// Print the trailing byte if needed.
+	if len(in)&1 == 1 {
+		fmt.Fprintf(&out, " `\\x%02x`", in[len(in)-1])
+	}
+
 	return out.String()
 }
 
@@ -246,6 +290,8 @@ func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []
 				} else {
 					addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), bytesToString(body)))
 				}
+			case "BMPString":
+				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), bytesToUTF16String(body)))
 			default:
 				// Keep parsing if the body looks like ASN.1.
 				if isMadeOfElements(body) {
