@@ -32,10 +32,10 @@ including a newline, is emitted as-is."
 u"A quoted string beginning with 'u' is a UTF-16 literal. Uescaped
 octets are interpreted as UTF-8 and then encoded as big-endian UTF-16. Legal escape
 sequences are: \\ \" \n \x00 \u0000 \U00000000. The last three forms differ
-only in the number of hex digests they consume. If the value is 0xffff or
-below, it emits the value as a big-endian 16-bit integer. Otherwise, it emits
-the big-endian UTF-16 encoding. (The two cases are identical except unpaired
-high or low surrogates are legal.)"
+only in the number of hex digits they consume. If the value is 0xffff or below,
+it emits the value as a big-endian 16-bit integer. Otherwise, it emits the
+big-endian UTF-16 encoding. (The two cases are identical except unpaired high
+or low surrogates are legal.)"
 
 
 # Hex literals.
