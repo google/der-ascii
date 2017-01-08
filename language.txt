@@ -29,7 +29,7 @@ including a newline, is emitted as-is."
 
 # UTF-16 literals.
 
-u"A quoted string beginning with 'u' is a UTF-16 literal. Uescaped
+u"A quoted string beginning with 'u' is a UTF-16 literal. Unescaped
 octets are interpreted as UTF-8 and then encoded as big-endian UTF-16. Legal escape
 sequences are: \\ \" \n \x00 \u0000 \U00000000. The last three forms differ
 only in the number of hex digits they consume. If the value is 0xffff or below,
@@ -83,7 +83,7 @@ FALSE
 #
 # A tag expression emits the tag portion of a DER element with the specified
 # tag class, tag number, and constructed bit. Note that it does not emit an
-# element body. Those are specified separatedly.
+# element body. Those are specified separately.
 #
 # Examples:
 [0]
