@@ -1,5 +1,23 @@
 # DER ASCII Language Specification.
 
+# DER ASCII was designed to represent valid DER and BER encodings in a
+# human-readable and human-editable format. This gives it different properties
+# from a typical ASN.1 printer.
+#
+# First, it is reversible, so all encoding variations must be represented in the
+# language directly. Indefinite lengths print differently from definite lengths,
+# BER constructed strings capture the entire tree of constructed and primitive
+# elements, etc.
+#
+# Second, DER ASCII is intended to create both valid and invalid encodings. It
+# has minimal knowledge of DER and BER, so elements in the input file may freely
+# be replaced by raw byte strings. This means element contents do not have
+# type-specific interpretations, and length-prefixes may not even correspond to
+# tags.
+#
+# As a consequence, it is not a goal to abstract all details of DER and BER
+# encoding from the user.
+#
 # This specification is a valid DER ASCII file.
 
 

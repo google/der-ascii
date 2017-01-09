@@ -8,7 +8,7 @@ or BER
 ([Basic Encoding Rules](https://en.wikipedia.org/wiki/X.690#BER_encoding))
 encodings of
 [ASN.1](https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One)
-structures.
+structures and malformed variants of them.
 
 It provides two tools, `ascii2der` and `der2ascii`, to convert DER ASCII to a
 byte string and vice versa. To install them, run:
