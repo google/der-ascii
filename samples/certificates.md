@@ -25,7 +25,7 @@ text editor, copy the `tbsCertificate` value into its own file, `tbs-cert.txt`.
 Then run:
 
     ascii2der -i tbs-cert.txt | openssl dgst -sha256 -sign issuer_key.pem | \
-        xxd -p | tr -d \\n > signature.txt
+        xxd -p -c 9999 > signature.txt
 
 For other options, replace `-sha256` with a different digest or pass `-sigopt`.
 See [OpenSSL's documentation](https://www.openssl.org/docs/manmaster/apps/dgst.html)
