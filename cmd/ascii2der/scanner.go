@@ -162,12 +162,12 @@ func (s *scanner) parseQuotedString() (token, error) {
 func appendUTF16(b []byte, r rune) []byte {
 	if r <= 0xffff {
 		// Note this logic intentionally tolerates unpaired surrogates.
-		return append(b, byte(r>>8), byte(r&0xff))
+		return append(b, byte(r>>8), byte(r))
 	}
 
 	r1, r2 := utf16.EncodeRune(r)
-	b = append(b, byte(r1>>8), byte(r1&0xff))
-	b = append(b, byte(r2>>8), byte(r2&0xff))
+	b = append(b, byte(r1>>8), byte(r1))
+	b = append(b, byte(r2>>8), byte(r2))
 	return b
 }
 
@@ -197,6 +197,40 @@ func (s *scanner) parseUTF16String() (token, error) {
 			}
 			s.advanceBytes(n)
 			bytes = appendUTF16(bytes, r)
+		}
+	}
+}
+
+func appendUTF32(b []byte, r rune) []byte {
+	return append(b, byte(r>>24), byte(r>>16), byte(r>>8), byte(r))
+}
+
+func (s *scanner) parseUTF32String() (token, error) {
+	s.advance() // Skip the U. The caller is assumed to have validated it.
+	s.advance() // Skip the ". The caller is assumed to have validated it.
+	start := s.pos
+	var bytes []byte
+	for {
+		if s.isEOF() {
+			return token{}, &parseError{start, errors.New("unmatched \"")}
+		}
+		switch c := s.text[s.pos.Offset]; c {
+		case '"':
+			s.advance()
+			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
+		case '\\':
+			r, err := s.parseEscapeSequence()
+			if err != nil {
+				return token{}, err
+			}
+			bytes = appendUTF32(bytes, r)
+		default:
+			r, n := utf8.DecodeRuneInString(s.text[s.pos.Offset:])
+			if r == utf8.RuneError {
+				return token{}, &parseError{s.pos, errors.New("invalid UTF-8")}
+			}
+			s.advanceBytes(n)
+			bytes = appendUTF32(bytes, r)
 		}
 	}
 }
@@ -234,6 +268,10 @@ again:
 	case 'u':
 		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '"' {
 			return s.parseUTF16String()
+		}
+	case 'U':
+		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '"' {
+			return s.parseUTF32String()
 		}
 	case '`':
 		s.advance()

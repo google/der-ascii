@@ -47,13 +47,23 @@ including a newline, is emitted as-is."
 
 # UTF-16 literals.
 
-u"A quoted string beginning with 'u' is a UTF-16 literal. Unescaped
-octets are interpreted as UTF-8 and then encoded as big-endian UTF-16. Legal escape
+u"A quoted string beginning with 'u' is a UTF-16 literal. Unescaped octets are
+interpreted as UTF-8 and then encoded as big-endian UTF-16. Legal escape
 sequences are: \\ \" \n \x00 \u0000 \U00000000. The last three forms differ
 only in the number of hex digits they consume. If the value is 0xffff or below,
 it emits the value as a big-endian 16-bit integer. Otherwise, it emits the
 big-endian UTF-16 encoding. (The two cases are identical except unpaired high
 or low surrogates are legal.)"
+
+
+# UTF-32 literals.
+
+U"A quoted string beginning with 'U' is a UTF-32 literal. Unescaped octets are
+interpreted as UTF-8 and then encoded as big-endian UTF-32. Legal escape
+sequences are: \\ \" \n \x00 \u0000 \U00000000. The last three forms differ
+only in the number of hex digits they consume. Numerical escape sequences emit
+their value as a big-endian 32-bit integer, regardless of whether it is a legal
+Unicode code point."
 
 
 # Hex literals.
@@ -258,6 +268,11 @@ SEQUENCE `aabbcc`
 #       escaped. If there is a byte left over, encode it in an additional hex
 #       literal.
 #
-#    f. Otherwise, if the body may be parsed as a series of BER elements without
+#    f. If the tag is UniversalString, decode the body as UTF-32 and encode as
+#       a UTF-32 literal. Unpaired surrogates and unprintable code points are
+#       escaped. If there are bytes left over, encode them in an additional hex
+#       literal.
+#
+#    g. Otherwise, if the body may be parsed as a series of BER elements without
 #       trailing data, recurse into the body. If not, encode it as a raw byte
 #       string.

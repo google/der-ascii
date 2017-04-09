@@ -202,6 +202,40 @@ var derToASCIITests = []convertFuncTest{
 		[]byte("\x1e\x06\x00\n\x00\"\x00\\"),
 		`BMPString { u"\n\"\\" }` + "\n",
 	},
+	// UniversalStrings decode into UTF-32 literals.
+	{
+		[]byte("\x1c\x24\x00\x00\x00h\x00\x00\x00e\x00\x00\x00l\x00\x00\x00l\x00\x00\x00o\x00\x00\x00 \x00\x00\x26\x03\x00\x00\x00 \x00\x01\xd1\x1e"),
+		"UniversalString { U\"hello ☃ 𝄞\" }\n",
+	},
+	// Non-printable Unicode characters are escaped in the smallest form
+	// which fits them.
+	{
+		[]byte("\x1c\x0c\x00\x00\x00\x00\x00\x00\xe0\x00\x00\x0f\x00\x00"),
+		`UniversalString { U"\x00\ue000\U000f0000" }` + "\n",
+	},
+	// Leftover bytes are encoded with a trailing hex literal.
+	{
+		[]byte("\x1c\x05\x00\x00\x00z\x01"),
+		"UniversalString { U\"z\" `\\x01` }\n",
+	},
+	{
+		[]byte("\x1c\x06\x00\x00\x00z\x01\x02"),
+		"UniversalString { U\"z\" `\\x01\\x02` }\n",
+	},
+	{
+		[]byte("\x1c\x07\x00\x00\x00z\x01\x02\x03"),
+		"UniversalString { U\"z\" `\\x01\\x02\\x03` }\n",
+	},
+	// Unpaired surrogates are tolerated, but always escaped.
+	{
+		[]byte("\x1c\x04\x00\x00\xd8\x34"),
+		"UniversalString { U\"\\ud834\" }\n",
+	},
+	// Special escape sequences are used.
+	{
+		[]byte("\x1c\x0c\x00\x00\x00\n\x00\x00\x00\"\x00\x00\x00\\"),
+		`UniversalString { U"\n\"\\" }` + "\n",
+	},
 	// By default, data is decoded as a string or hex literal depending on contents.
 	{
 		[]byte("\x04\x0bhello world"),

@@ -175,6 +175,41 @@ func bytesToUTF16String(in []byte) string {
 	return out.String()
 }
 
+func bytesToUTF32String(in []byte) string {
+	var out bytes.Buffer
+	out.WriteString(`U"`)
+	for i := 0; i < len(in)/4; i++ {
+		u := rune(in[4*i])<<24 | rune(in[4*i+1])<<16 | rune(in[4*i+2])<<8 | rune(in[4*i+3])
+		if u == '\n' {
+			out.WriteString(`\n`)
+		} else if u == '"' {
+			out.WriteString(`\"`)
+		} else if u == '\\' {
+			out.WriteString(`\\`)
+		} else if unicode.IsPrint(u) {
+			out.WriteRune(u)
+		} else if u <= 0xff {
+			fmt.Fprintf(&out, `\x%02x`, u)
+		} else if u <= 0xffff {
+			fmt.Fprintf(&out, `\u%04x`, u)
+		} else {
+			fmt.Fprintf(&out, `\U%08x`, u)
+		}
+	}
+	out.WriteString(`"`)
+
+	// Print the trailing bytes if needed.
+	if len(in)&3 != 0 {
+		fmt.Fprintf(&out, " `")
+		for i := len(in) &^ 3; i < len(in); i++ {
+			fmt.Fprintf(&out, "\\x%02x", in[i])
+		}
+		fmt.Fprintf(&out, "`")
+	}
+
+	return out.String()
+}
+
 func integerToString(in []byte) string {
 	v, ok := decodeInteger(in)
 	if ok && -100000 <= v && v <= 100000 {
@@ -292,6 +327,8 @@ func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []
 				}
 			case "BMPString":
 				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), bytesToUTF16String(body)))
+			case "UniversalString":
+				addLine(out, indent, fmt.Sprintf("%s { %s }", tagToString(tag), bytesToUTF32String(body)))
 			default:
 				// Keep parsing if the body looks like ASN.1.
 				if isMadeOfElements(body) {
