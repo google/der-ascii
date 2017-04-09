@@ -103,9 +103,8 @@ func bytesToString(in []byte) string {
 
 	if float64(asciiCount)/float64(len(in)) > 0.85 {
 		return bytesToQuotedString(in)
-	} else {
-		return bytesToHexString(in)
 	}
+	return bytesToHexString(in)
 }
 
 func bytesToHexString(in []byte) string {
