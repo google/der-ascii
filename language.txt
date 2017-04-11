@@ -52,8 +52,8 @@ interpreted as UTF-8 and then encoded as big-endian UTF-16. Legal escape
 sequences are: \\ \" \n \x00 \u0000 \U00000000. The last three forms differ
 only in the number of hex digits they consume. If the value is 0xffff or below,
 it emits the value as a big-endian 16-bit integer. Otherwise, it emits the
-big-endian UTF-16 encoding. (The two cases are identical except unpaired high
-or low surrogates are legal.)"
+big-endian UTF-16 encoding. (The special case for small values is so unpaired
+high or low surrogates are legal.)"
 
 
 # UTF-32 literals.
@@ -234,34 +234,32 @@ SEQUENCE `aabbcc`
 #
 # The algorithm is as follows:
 #
-# 1. Raw byte strings are encoded heuristically as quoted strings or hex
+# 1. Greedily parse BER elements out of the input. Indefinite-length encoding is
+#    legal. On parse error, encode the remaining bytes as quoted strings or hex
 #    literals depending on what fraction is printable ASCII.
 #
-# 2. Greedily parse BER elements out of the input. Indefinite-length encoding is
-#    legal. On parse error, encode the remaining bytes as in step 1.
+# 2. Minimally encode the tag in the BER element. If the element is
+#    definite-length, encode the body wrapped in curly braces. If the element
+#    is indefinite-length, encode the body wrapped in `80` and `0000`.
 #
-# 3. Minimally encode the tag in the BER element followed by the body in curly
-#    braces. If the element is indefinite-length, emit `80` for { and `0000` for
-#    }.
+# 3. If the element has the constructed bit, recurse to encode the body.
 #
-# 4. If the element has the constructed bit, recurse to encode the body.
-#
-# 5. Otherwise, heuristically encode the body based on the tag:
+# 4. Otherwise, heuristically encode the body based on the tag:
 #
 #    a. If the tag is INTEGER and the body is a valid integer under some
-#       threshold, encode as an integer. Otherwise a hex literal.
+#       threshold, encode as an integer. Otherwise encode as a hex literal.
 #
 #    b. If the tag is OBJECT IDENTIFIER and the body is a valid OID, encode as
-#       an OID. Otherwise a hex literal.
+#       an OID. Otherwise encode as a hex literal.
 #
 #    c. If the tag is BOOLEAN and the body is valid, encode as TRUE or FALSE.
-#       Otherwise a hex literal.
+#       Otherwise encode as a hex literal.
 #
 #    d. If the tag is BIT STRING and the body is non-empty, encode the first
 #       byte as a separate hex literal. If this value is non-zero, encode the
-#       remainder as a raw byte string. Otherwise, apply step e to encode body.
-#       This is to account for X.509 incorrectly using BIT STRING instead of
-#       OCTET STRING for SubjectPublicKeyInfo and signatures.
+#       remainder as a raw byte string. Otherwise, apply step g to encode the
+#       body. This is to account for X.509 incorrectly using BIT STRING
+#       instead of OCTET STRING for SubjectPublicKeyInfo and signatures.
 #
 #    e. If the tag is BMPString, decode the body as UTF-16 and encode as a
 #       UTF-16 literal. Unpaired surrogates and unprintable code points are
@@ -275,4 +273,4 @@ SEQUENCE `aabbcc`
 #
 #    g. Otherwise, if the body may be parsed as a series of BER elements without
 #       trailing data, recurse into the body. If not, encode it as a raw byte
-#       string.
+#       string as excess bytes are encoded in step 1.
