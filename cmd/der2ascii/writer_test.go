@@ -17,7 +17,7 @@ package main
 import (
 	"testing"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 var isMadeOfElementsTests = []struct {
@@ -40,25 +40,25 @@ func TestIsMadeOfElements(t *testing.T) {
 }
 
 var tagToStringTests = []struct {
-	in  lib.Tag
+	in  internal.Tag
 	out string
 }{
-	{lib.Tag{lib.ClassUniversal, 16, true, 0}, "SEQUENCE"},
-	{lib.Tag{lib.ClassUniversal, 16, true, 1}, "[long-form:1 SEQUENCE]"},
-	{lib.Tag{lib.ClassUniversal, 16, false, 0}, "[SEQUENCE PRIMITIVE]"},
-	{lib.Tag{lib.ClassUniversal, 16, false, 1}, "[long-form:1 SEQUENCE PRIMITIVE]"},
-	{lib.Tag{lib.ClassUniversal, 2, true, 0}, "[INTEGER CONSTRUCTED]"},
-	{lib.Tag{lib.ClassUniversal, 2, false, 0}, "INTEGER"},
-	{lib.Tag{lib.ClassUniversal, 1234, true, 0}, "[UNIVERSAL 1234]"},
-	{lib.Tag{lib.ClassContextSpecific, 0, true, 0}, "[0]"},
-	{lib.Tag{lib.ClassContextSpecific, 0, true, 1}, "[long-form:1 0]"},
-	{lib.Tag{lib.ClassContextSpecific, 0, false, 0}, "[0 PRIMITIVE]"},
-	{lib.Tag{lib.ClassApplication, 0, true, 0}, "[APPLICATION 0]"},
-	{lib.Tag{lib.ClassApplication, 0, true, 1}, "[long-form:1 APPLICATION 0]"},
-	{lib.Tag{lib.ClassApplication, 0, false, 0}, "[APPLICATION 0 PRIMITIVE]"},
-	{lib.Tag{lib.ClassApplication, 0, false, 1}, "[long-form:1 APPLICATION 0 PRIMITIVE]"},
-	{lib.Tag{lib.ClassPrivate, 0, true, 0}, "[PRIVATE 0]"},
-	{lib.Tag{lib.ClassPrivate, 0, false, 0}, "[PRIVATE 0 PRIMITIVE]"},
+	{internal.Tag{internal.ClassUniversal, 16, true, 0}, "SEQUENCE"},
+	{internal.Tag{internal.ClassUniversal, 16, true, 1}, "[long-form:1 SEQUENCE]"},
+	{internal.Tag{internal.ClassUniversal, 16, false, 0}, "[SEQUENCE PRIMITIVE]"},
+	{internal.Tag{internal.ClassUniversal, 16, false, 1}, "[long-form:1 SEQUENCE PRIMITIVE]"},
+	{internal.Tag{internal.ClassUniversal, 2, true, 0}, "[INTEGER CONSTRUCTED]"},
+	{internal.Tag{internal.ClassUniversal, 2, false, 0}, "INTEGER"},
+	{internal.Tag{internal.ClassUniversal, 1234, true, 0}, "[UNIVERSAL 1234]"},
+	{internal.Tag{internal.ClassContextSpecific, 0, true, 0}, "[0]"},
+	{internal.Tag{internal.ClassContextSpecific, 0, true, 1}, "[long-form:1 0]"},
+	{internal.Tag{internal.ClassContextSpecific, 0, false, 0}, "[0 PRIMITIVE]"},
+	{internal.Tag{internal.ClassApplication, 0, true, 0}, "[APPLICATION 0]"},
+	{internal.Tag{internal.ClassApplication, 0, true, 1}, "[long-form:1 APPLICATION 0]"},
+	{internal.Tag{internal.ClassApplication, 0, false, 0}, "[APPLICATION 0 PRIMITIVE]"},
+	{internal.Tag{internal.ClassApplication, 0, false, 1}, "[long-form:1 APPLICATION 0 PRIMITIVE]"},
+	{internal.Tag{internal.ClassPrivate, 0, true, 0}, "[PRIVATE 0]"},
+	{internal.Tag{internal.ClassPrivate, 0, false, 0}, "[PRIVATE 0 PRIMITIVE]"},
 }
 
 func TestTagToString(t *testing.T) {

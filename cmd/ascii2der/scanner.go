@@ -24,7 +24,7 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 // A position describes a location in the input stream.
@@ -323,7 +323,7 @@ loop:
 	symbol := s.text[start.Offset:s.pos.Offset]
 
 	// See if it is a tag.
-	tag, ok := lib.TagByName(symbol)
+	tag, ok := internal.TagByName(symbol)
 	if ok {
 		value, err := appendTag(nil, tag)
 		if err != nil {

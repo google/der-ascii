@@ -17,44 +17,44 @@ package main
 import (
 	"testing"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 var decodeTagStringTests = []struct {
 	input string
-	tag   lib.Tag
+	tag   internal.Tag
 	ok    bool
 }{
-	{"SEQUENCE", lib.Tag{lib.ClassUniversal, 16, true, 0}, true},
-	{"long-form:5 SEQUENCE", lib.Tag{lib.ClassUniversal, 16, true, 5}, true},
-	{"SEQUENCE CONSTRUCTED", lib.Tag{lib.ClassUniversal, 16, true, 0}, true},
-	{"SEQUENCE PRIMITIVE", lib.Tag{lib.ClassUniversal, 16, false, 0}, true},
-	{"INTEGER", lib.Tag{lib.ClassUniversal, 2, false, 0}, true},
-	{"INTEGER CONSTRUCTED", lib.Tag{lib.ClassUniversal, 2, true, 0}, true},
-	{"INTEGER PRIMITIVE", lib.Tag{lib.ClassUniversal, 2, false, 0}, true},
-	{"long-form:5 2", lib.Tag{lib.ClassContextSpecific, 2, true, 5}, true},
-	{"2 PRIMITIVE", lib.Tag{lib.ClassContextSpecific, 2, false, 0}, true},
-	{"APPLICATION 2", lib.Tag{lib.ClassApplication, 2, true, 0}, true},
-	{"PRIVATE 2", lib.Tag{lib.ClassPrivate, 2, true, 0}, true},
-	{"long-form:5 PRIVATE 2", lib.Tag{lib.ClassPrivate, 2, true, 5}, true},
-	{"UNIVERSAL 2", lib.Tag{lib.ClassUniversal, 2, true, 0}, true},
-	{"UNIVERSAL 2", lib.Tag{lib.ClassUniversal, 2, true, 0}, true},
-	{"UNIVERSAL 2 CONSTRUCTED", lib.Tag{lib.ClassUniversal, 2, true, 0}, true},
-	{"UNIVERSAL 2 PRIMITIVE", lib.Tag{lib.ClassUniversal, 2, false, 0}, true},
-	{"UNIVERSAL 2 CONSTRUCTED EXTRA", lib.Tag{}, false},
-	{"UNIVERSAL 2 EXTRA", lib.Tag{}, false},
-	{"UNIVERSAL NOT_A_NUMBER", lib.Tag{}, false},
-	{"UNIVERSAL SEQUENCE", lib.Tag{}, false},
-	{"UNIVERSAL", lib.Tag{}, false},
-	{"SEQUENCE 2", lib.Tag{}, false},
-	{"", lib.Tag{}, false},
-	{" SEQUENCE", lib.Tag{}, false},
-	{"SEQUENCE ", lib.Tag{}, false},
-	{"SEQUENCE  CONSTRUCTED", lib.Tag{}, false},
-	{"long-form:2", lib.Tag{}, false},
-	{"long-form:0 SEQUENCE", lib.Tag{}, false},
-	{"long-form:-1 SEQUENCE", lib.Tag{}, false},
-	{"long-form:garbage SEQUENCE", lib.Tag{}, false},
+	{"SEQUENCE", internal.Tag{internal.ClassUniversal, 16, true, 0}, true},
+	{"long-form:5 SEQUENCE", internal.Tag{internal.ClassUniversal, 16, true, 5}, true},
+	{"SEQUENCE CONSTRUCTED", internal.Tag{internal.ClassUniversal, 16, true, 0}, true},
+	{"SEQUENCE PRIMITIVE", internal.Tag{internal.ClassUniversal, 16, false, 0}, true},
+	{"INTEGER", internal.Tag{internal.ClassUniversal, 2, false, 0}, true},
+	{"INTEGER CONSTRUCTED", internal.Tag{internal.ClassUniversal, 2, true, 0}, true},
+	{"INTEGER PRIMITIVE", internal.Tag{internal.ClassUniversal, 2, false, 0}, true},
+	{"long-form:5 2", internal.Tag{internal.ClassContextSpecific, 2, true, 5}, true},
+	{"2 PRIMITIVE", internal.Tag{internal.ClassContextSpecific, 2, false, 0}, true},
+	{"APPLICATION 2", internal.Tag{internal.ClassApplication, 2, true, 0}, true},
+	{"PRIVATE 2", internal.Tag{internal.ClassPrivate, 2, true, 0}, true},
+	{"long-form:5 PRIVATE 2", internal.Tag{internal.ClassPrivate, 2, true, 5}, true},
+	{"UNIVERSAL 2", internal.Tag{internal.ClassUniversal, 2, true, 0}, true},
+	{"UNIVERSAL 2", internal.Tag{internal.ClassUniversal, 2, true, 0}, true},
+	{"UNIVERSAL 2 CONSTRUCTED", internal.Tag{internal.ClassUniversal, 2, true, 0}, true},
+	{"UNIVERSAL 2 PRIMITIVE", internal.Tag{internal.ClassUniversal, 2, false, 0}, true},
+	{"UNIVERSAL 2 CONSTRUCTED EXTRA", internal.Tag{}, false},
+	{"UNIVERSAL 2 EXTRA", internal.Tag{}, false},
+	{"UNIVERSAL NOT_A_NUMBER", internal.Tag{}, false},
+	{"UNIVERSAL SEQUENCE", internal.Tag{}, false},
+	{"UNIVERSAL", internal.Tag{}, false},
+	{"SEQUENCE 2", internal.Tag{}, false},
+	{"", internal.Tag{}, false},
+	{" SEQUENCE", internal.Tag{}, false},
+	{"SEQUENCE ", internal.Tag{}, false},
+	{"SEQUENCE  CONSTRUCTED", internal.Tag{}, false},
+	{"long-form:2", internal.Tag{}, false},
+	{"long-form:0 SEQUENCE", internal.Tag{}, false},
+	{"long-form:-1 SEQUENCE", internal.Tag{}, false},
+	{"long-form:garbage SEQUENCE", internal.Tag{}, false},
 }
 
 func TestDecodeTagString(t *testing.T) {

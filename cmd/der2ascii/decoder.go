@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/google/der-ascii/lib"
+import "github.com/google/der-ascii/internal"
 
 func parseBase128(bytes []byte) (ret uint32, lengthOverride int, rest []byte, ok bool) {
 	rest = bytes
@@ -45,7 +45,7 @@ func parseBase128(bytes []byte) (ret uint32, lengthOverride int, rest []byte, ok
 // parseTag parses a tag from b, returning the resulting tag and the remainder
 // of the slice. On parse failure, ok is returned as false and rest is
 // unchanged.
-func parseTag(bytes []byte) (tag lib.Tag, rest []byte, ok bool) {
+func parseTag(bytes []byte) (tag internal.Tag, rest []byte, ok bool) {
 	rest = bytes
 
 	// Consume the first byte. Reject EOC.
@@ -55,12 +55,12 @@ func parseTag(bytes []byte) (tag lib.Tag, rest []byte, ok bool) {
 	b := rest[0]
 	rest = rest[1:]
 
-	class := lib.Class(b & 0xc0)
+	class := internal.Class(b & 0xc0)
 	number := uint32(b & 0x1f)
 	constructed := b&0x20 != 0
 	if number < 0x1f {
 		// Low-tag-number form.
-		tag = lib.Tag{class, number, constructed, 0}
+		tag = internal.Tag{class, number, constructed, 0}
 		ok = true
 		return
 	}
@@ -77,13 +77,13 @@ func parseTag(bytes []byte) (tag lib.Tag, rest []byte, ok bool) {
 	}
 	number = n
 
-	tag = lib.Tag{class, number, constructed, lengthOverride}
+	tag = internal.Tag{class, number, constructed, lengthOverride}
 	ok = true
 	return
 }
 
 type element struct {
-	tag              lib.Tag
+	tag              internal.Tag
 	body             []byte
 	indefinite       bool
 	longFormOverride int

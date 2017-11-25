@@ -19,24 +19,24 @@ import (
 	"math"
 	"testing"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 var appendTagTests = []struct {
-	tag     lib.Tag
+	tag     internal.Tag
 	ok      bool
 	encoded []byte
 }{
-	{lib.Tag{lib.ClassUniversal, 16, true, 0}, true, []byte{0x30}},
-	{lib.Tag{lib.ClassUniversal, 16, true, 1}, true, []byte{0x3f, 0x10}},
-	{lib.Tag{lib.ClassUniversal, 16, true, 2}, true, []byte{0x3f, 0x80, 0x10}},
-	{lib.Tag{lib.ClassUniversal, 2, false, 0}, true, []byte{0x02}},
-	{lib.Tag{lib.ClassContextSpecific, 1, true, 0}, true, []byte{0xa1}},
-	{lib.Tag{lib.ClassApplication, 1234, true, 0}, true, []byte{0x7f, 0x89, 0x52}},
+	{internal.Tag{internal.ClassUniversal, 16, true, 0}, true, []byte{0x30}},
+	{internal.Tag{internal.ClassUniversal, 16, true, 1}, true, []byte{0x3f, 0x10}},
+	{internal.Tag{internal.ClassUniversal, 16, true, 2}, true, []byte{0x3f, 0x80, 0x10}},
+	{internal.Tag{internal.ClassUniversal, 2, false, 0}, true, []byte{0x02}},
+	{internal.Tag{internal.ClassContextSpecific, 1, true, 0}, true, []byte{0xa1}},
+	{internal.Tag{internal.ClassApplication, 1234, true, 0}, true, []byte{0x7f, 0x89, 0x52}},
 	// Override is too small.
-	{lib.Tag{lib.ClassApplication, 1234, true, 1}, false, nil},
-	{lib.Tag{lib.ClassApplication, 1234, true, 2}, true, []byte{0x7f, 0x89, 0x52}},
-	{lib.Tag{lib.ClassApplication, 1234, true, 3}, true, []byte{0x7f, 0x80, 0x89, 0x52}},
+	{internal.Tag{internal.ClassApplication, 1234, true, 1}, false, nil},
+	{internal.Tag{internal.ClassApplication, 1234, true, 2}, true, []byte{0x7f, 0x89, 0x52}},
+	{internal.Tag{internal.ClassApplication, 1234, true, 3}, true, []byte{0x7f, 0x80, 0x89, 0x52}},
 }
 
 func TestAppendTag(t *testing.T) {

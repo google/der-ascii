@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 const longFormPrefix = "long-form:"
@@ -46,7 +46,7 @@ func decodeLongFormOverride(s string) (int, error) {
 
 // decodeTagString decodes s as a tag descriptor and returns the decoded tag or
 // an error.
-func decodeTagString(s string) (lib.Tag, error) {
+func decodeTagString(s string) (internal.Tag, error) {
 	ss := strings.Split(s, " ")
 
 	// Tags may begin with a long-form override.
@@ -55,44 +55,44 @@ func decodeTagString(s string) (lib.Tag, error) {
 		var err error
 		longFormOverride, err = decodeLongFormOverride(ss[0])
 		if err != nil {
-			return lib.Tag{}, err
+			return internal.Tag{}, err
 		}
 		ss = ss[1:]
 	}
 
 	if len(ss) == 0 {
-		return lib.Tag{}, errors.New("expected tag component")
+		return internal.Tag{}, errors.New("expected tag component")
 	}
 
 	// Tag aliases may only be in the first component.
-	tag, ok := lib.TagByName(ss[0])
+	tag, ok := internal.TagByName(ss[0])
 	if ok {
 		ss = ss[1:]
 	} else {
 		// Tags default to constructed, context-specific.
-		tag.Class = lib.ClassContextSpecific
+		tag.Class = internal.ClassContextSpecific
 		tag.Constructed = true
 
 		// Otherwise, the first component is an optional class.
 		switch ss[0] {
 		case "APPLICATION":
-			tag.Class = lib.ClassApplication
+			tag.Class = internal.ClassApplication
 			ss = ss[1:]
 		case "PRIVATE":
-			tag.Class = lib.ClassPrivate
+			tag.Class = internal.ClassPrivate
 			ss = ss[1:]
 		case "UNIVERSAL":
-			tag.Class = lib.ClassUniversal
+			tag.Class = internal.ClassUniversal
 			ss = ss[1:]
 		}
 
 		// The next (or first) component must be the tag number.
 		if len(ss) == 0 {
-			return lib.Tag{}, errors.New("expected tag number")
+			return internal.Tag{}, errors.New("expected tag number")
 		}
 		n, err := strconv.ParseUint(ss[0], 10, 32)
 		if err != nil {
-			return lib.Tag{}, err
+			return internal.Tag{}, err
 		}
 		tag.Number = uint32(n)
 		ss = ss[1:]
@@ -108,13 +108,13 @@ func decodeTagString(s string) (lib.Tag, error) {
 		case "PRIMITIVE":
 			tag.Constructed = false
 		default:
-			return lib.Tag{}, fmt.Errorf("unexpected tag component '%s'", ss[0])
+			return internal.Tag{}, fmt.Errorf("unexpected tag component '%s'", ss[0])
 		}
 		ss = ss[1:]
 	}
 
 	if len(ss) != 0 {
-		return lib.Tag{}, fmt.Errorf("excess tag component '%s'", ss[0])
+		return internal.Tag{}, fmt.Errorf("excess tag component '%s'", ss[0])
 	}
 
 	return tag, nil

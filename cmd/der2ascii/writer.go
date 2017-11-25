@@ -23,7 +23,7 @@ import (
 	"unicode"
 	"unicode/utf16"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 // isMadeOfElements returns true if in can be parsed as a series of BER
@@ -49,29 +49,29 @@ func isMadeOfElements(in []byte) bool {
 	return indefiniteCount == 0
 }
 
-func classToString(class lib.Class) string {
+func classToString(class internal.Class) string {
 	switch class {
-	case lib.ClassUniversal:
+	case internal.ClassUniversal:
 		return "UNIVERSAL"
-	case lib.ClassApplication:
+	case internal.ClassApplication:
 		return "APPLICATION"
-	case lib.ClassContextSpecific:
+	case internal.ClassContextSpecific:
 		panic("should not be called")
-	case lib.ClassPrivate:
+	case internal.ClassPrivate:
 		return "PRIVATE"
 	default:
 		panic(class)
 	}
 }
 
-func tagToString(tag lib.Tag) string {
+func tagToString(tag internal.Tag) string {
 	// Write a short name if possible.
 	name, includeConstructed, nameOk := tag.GetAlias()
 	if nameOk && tag.LongFormOverride == 0 && !includeConstructed {
 		return name
 	}
 	if !nameOk {
-		if tag.Class != lib.ClassContextSpecific {
+		if tag.Class != internal.ClassContextSpecific {
 			name = fmt.Sprintf("%s %d", classToString(tag.Class), tag.Number)
 		} else {
 			name = fmt.Sprintf("%d", tag.Number)

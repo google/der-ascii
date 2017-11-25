@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package lib contains common routines between der2ascii and ascii2der.
-package lib
+// Package internal contains common routines between der2ascii and ascii2der.
+package internal
 
 type Class byte
 

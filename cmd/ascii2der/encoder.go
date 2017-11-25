@@ -18,7 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 func appendBase128(dst []byte, value uint32) []byte {
@@ -59,7 +59,7 @@ func appendBase128WithLength(dst []byte, value uint32, length int) ([]byte, erro
 
 // appendTag marshals the given tag and appends the result to dst, returning the
 // updated slice.
-func appendTag(dst []byte, tag lib.Tag) ([]byte, error) {
+func appendTag(dst []byte, tag internal.Tag) ([]byte, error) {
 	b := byte(tag.Class)
 	if tag.Constructed {
 		b |= 0x20

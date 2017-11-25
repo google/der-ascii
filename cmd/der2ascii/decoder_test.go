@@ -20,32 +20,32 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/der-ascii/lib"
+	"github.com/google/der-ascii/internal"
 )
 
 var parseTagTests = []struct {
 	in  []byte
-	tag lib.Tag
+	tag internal.Tag
 	ok  bool
 }{
-	{[]byte{0x30}, lib.Tag{Number: 16, Constructed: true}, true},
-	{[]byte{0x02}, lib.Tag{Number: 2}, true},
-	{[]byte{0x7f, 0x89, 0x52}, lib.Tag{Class: lib.ClassApplication, Number: 1234, Constructed: true}, true},
+	{[]byte{0x30}, internal.Tag{Number: 16, Constructed: true}, true},
+	{[]byte{0x02}, internal.Tag{Number: 2}, true},
+	{[]byte{0x7f, 0x89, 0x52}, internal.Tag{Class: internal.ClassApplication, Number: 1234, Constructed: true}, true},
 	// Empty.
-	{[]byte{}, lib.Tag{}, false},
+	{[]byte{}, internal.Tag{}, false},
 	// Truncated high-tag-number-form.
-	{[]byte{0x7f}, lib.Tag{}, false},
-	{[]byte{0x7f, 0xff}, lib.Tag{}, false},
+	{[]byte{0x7f}, internal.Tag{}, false},
+	{[]byte{0x7f, 0xff}, internal.Tag{}, false},
 	// Should have been low-tag-number form.
-	{[]byte{0x7f, 0x01}, lib.Tag{Class: lib.ClassApplication, Number: 1, Constructed: true, LongFormOverride: 1}, true},
+	{[]byte{0x7f, 0x01}, internal.Tag{Class: internal.ClassApplication, Number: 1, Constructed: true, LongFormOverride: 1}, true},
 	// Non-minimal encoding.
-	{[]byte{0x7f, 0x00}, lib.Tag{Class: lib.ClassApplication, Number: 0, Constructed: true, LongFormOverride: 1}, true},
-	{[]byte{0x7f, 0x80, 0x01}, lib.Tag{Class: lib.ClassApplication, Number: 1, Constructed: true, LongFormOverride: 2}, true},
+	{[]byte{0x7f, 0x00}, internal.Tag{Class: internal.ClassApplication, Number: 0, Constructed: true, LongFormOverride: 1}, true},
+	{[]byte{0x7f, 0x80, 0x01}, internal.Tag{Class: internal.ClassApplication, Number: 1, Constructed: true, LongFormOverride: 2}, true},
 	// Overflow.
-	{[]byte{0xff, 0x8f, 0xff, 0xff, 0xff, 0x7f}, lib.Tag{Class: lib.ClassPrivate, Number: (1 << 32) - 1, Constructed: true}, true},
-	{[]byte{0xff, 0x9f, 0xff, 0xff, 0xff, 0x7f}, lib.Tag{}, false},
+	{[]byte{0xff, 0x8f, 0xff, 0xff, 0xff, 0x7f}, internal.Tag{Class: internal.ClassPrivate, Number: (1 << 32) - 1, Constructed: true}, true},
+	{[]byte{0xff, 0x9f, 0xff, 0xff, 0xff, 0x7f}, internal.Tag{}, false},
 	// EOC.
-	{[]byte{0x00}, lib.Tag{}, false},
+	{[]byte{0x00}, internal.Tag{}, false},
 }
 
 func TestParseTag(t *testing.T) {
@@ -77,7 +77,7 @@ func TestParseTag(t *testing.T) {
 	}
 }
 
-var sequenceTag = lib.Tag{Class: lib.ClassUniversal, Number: 16, Constructed: true}
+var sequenceTag = internal.Tag{Class: internal.ClassUniversal, Number: 16, Constructed: true}
 
 var parseTagAndLengthTests = []struct {
 	in     []byte
