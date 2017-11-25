@@ -14,17 +14,38 @@
 
 package main
 
-import "github.com/google/der-ascii/lib"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/google/der-ascii/lib"
+)
 
 func appendBase128(dst []byte, value uint32) []byte {
-	// Special-case: zero is encoded with one, not zero bytes.
-	if value == 0 {
-		return append(dst, 0)
+	dst, err := appendBase128WithLength(dst, value, 0)
+	if err != nil {
+		// Only a length override can fail.
+		panic(err)
 	}
+	return dst
+}
+
+func appendBase128WithLength(dst []byte, value uint32, length int) ([]byte, error) {
 	// Count how many bytes are needed.
 	var l int
 	for n := value; n != 0; n >>= 7 {
 		l++
+	}
+	// Special-case: zero is encoded with one, not zero bytes.
+	if value == 0 {
+		l = 1
+	}
+	// Apply the length override.
+	if length != 0 {
+		if length < l {
+			return nil, fmt.Errorf("length override of %d is too small, need at least %d bytes", length, l)
+		}
+		l = length
 	}
 	for ; l > 0; l-- {
 		b := byte(value>>uint(7*(l-1))) & 0x7f
@@ -33,34 +54,34 @@ func appendBase128(dst []byte, value uint32) []byte {
 		}
 		dst = append(dst, b)
 	}
-	return dst
+	return dst, nil
 }
 
 // appendTag marshals the given tag and appends the result to dst, returning the
 // updated slice.
-func appendTag(dst []byte, tag lib.Tag) []byte {
+func appendTag(dst []byte, tag lib.Tag) ([]byte, error) {
 	b := byte(tag.Class)
 	if tag.Constructed {
 		b |= 0x20
 	}
-	if tag.Number < 0x1f {
+	if tag.Number < 0x1f && tag.LongFormOverride == 0 {
 		// Low-tag-number form.
 		b |= byte(tag.Number)
-		return append(dst, b)
+		return append(dst, b), nil
 	}
 
 	// High-tag-number form.
 	b |= 0x1f
 	dst = append(dst, b)
-	return appendBase128(dst, tag.Number)
+	return appendBase128WithLength(dst, tag.Number, tag.LongFormOverride)
 }
 
 // appendLength marshals the given length in DER and appends the result to dst,
 // returning the updated slice.
-func appendLength(dst []byte, length int) []byte {
-	if length < 0x80 {
+func appendLength(dst []byte, length, lengthLength int) ([]byte, error) {
+	if length < 0x80 && lengthLength == 0 {
 		// Short-form length.
-		return append(dst, byte(length))
+		return append(dst, byte(length)), nil
 	}
 
 	// Long-form length. Count how many bytes are needed.
@@ -68,11 +89,20 @@ func appendLength(dst []byte, length int) []byte {
 	for n := length; n != 0; n >>= 8 {
 		l++
 	}
+	if lengthLength != 0 {
+		if lengthLength > 127 {
+			return nil, errors.New("length override too large")
+		}
+		if byte(lengthLength) < l {
+			return nil, fmt.Errorf("length override of %d too small, need at least %d bytes", lengthLength, l)
+		}
+		l = byte(lengthLength)
+	}
 	dst = append(dst, 0x80|l)
 	for ; l > 0; l-- {
 		dst = append(dst, byte(length>>uint(8*(l-1))))
 	}
-	return dst
+	return dst, nil
 }
 
 // appendInteger marshals the given value as the contents of a DER INTEGER and

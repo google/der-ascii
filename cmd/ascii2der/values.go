@@ -23,10 +23,46 @@ import (
 	"github.com/google/der-ascii/lib"
 )
 
+const longFormPrefix = "long-form:"
+
+func isLongFormOverride(s string) bool {
+	return strings.HasPrefix(s, longFormPrefix)
+}
+
+func decodeLongFormOverride(s string) (int, error) {
+	if !isLongFormOverride(s) {
+		return 0, errors.New("not a long-form override")
+	}
+
+	l, err := strconv.Atoi(s[len(longFormPrefix):])
+	if err != nil {
+		return 0, err
+	}
+	if l <= 0 {
+		return 0, errors.New("invalid long-form override")
+	}
+	return l, nil
+}
+
 // decodeTagString decodes s as a tag descriptor and returns the decoded tag or
 // an error.
 func decodeTagString(s string) (lib.Tag, error) {
 	ss := strings.Split(s, " ")
+
+	// Tags may begin with a long-form override.
+	var longFormOverride int
+	if isLongFormOverride(ss[0]) {
+		var err error
+		longFormOverride, err = decodeLongFormOverride(ss[0])
+		if err != nil {
+			return lib.Tag{}, err
+		}
+		ss = ss[1:]
+	}
+
+	if len(ss) == 0 {
+		return lib.Tag{}, errors.New("expected tag component")
+	}
 
 	// Tag aliases may only be in the first component.
 	tag, ok := lib.TagByName(ss[0])
@@ -61,6 +97,8 @@ func decodeTagString(s string) (lib.Tag, error) {
 		tag.Number = uint32(n)
 		ss = ss[1:]
 	}
+
+	tag.LongFormOverride = longFormOverride
 
 	// The final token, if any, may be CONSTRUCTED or PRIMITIVE.
 	if len(ss) > 0 {

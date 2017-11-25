@@ -16,23 +16,28 @@ package main
 
 import "github.com/google/der-ascii/lib"
 
-func parseBase128(bytes []byte) (ret uint32, rest []byte, ok bool) {
-	// The tag must be minimally-encoded, so the first byte may not be 0x80.
-	if len(bytes) == 0 || bytes[0] == 0x80 {
-		return 0, bytes, false
+func parseBase128(bytes []byte) (ret uint32, lengthOverride int, rest []byte, ok bool) {
+	rest = bytes
+	if len(rest) == 0 {
+		return
 	}
 
+	isMinimal := rest[0] != 0x80
 	for {
-		if len(bytes) == 0 || (ret<<7)>>7 != ret {
+		if len(rest) == 0 || (ret<<7)>>7 != ret {
 			// Input too small or overflow.
-			return 0, bytes, false
+			return
 		}
-		b := bytes[0]
+		b := rest[0]
 		ret <<= 7
 		ret |= uint32(b & 0x7f)
-		bytes = bytes[1:]
+		rest = rest[1:]
 		if b&0x80 == 0 {
-			return ret, bytes, true
+			ok = true
+			if !isMinimal {
+				lengthOverride = len(bytes) - len(rest)
+			}
+			return
 		}
 	}
 }
@@ -55,88 +60,104 @@ func parseTag(bytes []byte) (tag lib.Tag, rest []byte, ok bool) {
 	constructed := b&0x20 != 0
 	if number < 0x1f {
 		// Low-tag-number form.
-		tag = lib.Tag{class, number, constructed}
+		tag = lib.Tag{class, number, constructed, 0}
 		ok = true
 		return
 	}
 
-	n, rest, base128Ok := parseBase128(rest)
-	if !base128Ok || n < 0x1f {
-		// Parse error or non-minimal encoding.
+	n, lengthOverride, rest, base128Ok := parseBase128(rest)
+	if !base128Ok {
+		// Parse error.
 		rest = bytes
 		return
 	}
+	if n < 0x1f {
+		// Non-minimal encoding.
+		lengthOverride = len(bytes) - len(rest) - 1
+	}
 	number = n
 
-	tag = lib.Tag{class, number, constructed}
+	tag = lib.Tag{class, number, constructed, lengthOverride}
 	ok = true
 	return
 }
 
-// parseTagAndLength parses a tag and length pair from bytes. If the resulting
-// length is indefinite, it sets indefinite to true.
-func parseTagAndLength(bytes []byte) (tag lib.Tag, length int, indefinite bool, rest []byte, ok bool) {
+type element struct {
+	tag              lib.Tag
+	body             []byte
+	indefinite       bool
+	longFormOverride int
+}
+
+// parseTagAndLength parses a tag and length pair from bytes. It is split out
+// of parseElement so tests can distinguish failing to parse a length from the
+// rest of the body.
+func parseTagAndLength(bytes []byte) (elem element, length int, rest []byte, ok bool) {
 	rest = bytes
 
 	// Parse the tag.
-	tag, rest, ok = parseTag(rest)
-	if !ok {
-		return lib.Tag{}, 0, false, bytes, false
+	var tagOk bool
+	elem.tag, bytes, tagOk = parseTag(bytes)
+	if !tagOk {
+		return
 	}
 
 	// Parse the length.
-	if len(rest) == 0 {
-		return lib.Tag{}, 0, false, bytes, false
+	if len(bytes) == 0 {
+		return
 	}
-	b := rest[0]
-	rest = rest[1:]
+	b := bytes[0]
+	bytes = bytes[1:]
 	if b < 0x80 {
 		// Short form length.
 		length = int(b)
-		return
-	}
-	if b == 0x80 {
-		// Indefinite-length. Must be constructed.
-		if !tag.Constructed {
-			return lib.Tag{}, 0, false, bytes, false
+	} else if b == 0x80 {
+		if !elem.tag.Constructed {
+			return // Indefinite-length elements must be constructed.
 		}
-		indefinite = true
-		return
-	}
-	// Long form length.
-	b &= 0x7f
-	if int(b) > len(rest) || rest[0] == 0 {
-		// Not enough room or non-minimal length.
-		return lib.Tag{}, 0, false, bytes, false
-	}
-	for i := 0; i < int(b); i++ {
-		if length >= 1<<23 {
-			// Overflow.
-			return lib.Tag{}, 0, false, bytes, false
+		elem.indefinite = true
+	} else {
+		// Long form length.
+		b &= 0x7f
+		if int(b) > len(bytes) {
+			return // Not enough room.
 		}
-		length <<= 8
-		length |= int(rest[i])
+		for i := 0; i < int(b); i++ {
+			if length >= 1<<23 {
+				return // Overflow.
+			}
+			length <<= 8
+			length |= int(bytes[i])
+		}
+		if bytes[0] == 0 || length < 0x80 {
+			elem.longFormOverride = int(b) // Non-minimal length.
+		}
+		bytes = bytes[b:]
 	}
-	if length < 0x80 {
-		// Should have been short form.
-		return lib.Tag{}, 0, false, bytes, false
-	}
-	rest = rest[b:]
+	ok = true
+	rest = bytes
 	return
 }
 
 // parseElement parses an element from bytes. If the element is
 // indefinite-length body is left as nil and instead indefinite is set to true.
-func parseElement(bytes []byte) (tag lib.Tag, body []byte, indefinite bool, rest []byte, ok bool) {
+func parseElement(bytes []byte) (elem element, rest []byte, ok bool) {
 	rest = bytes
-
-	tag, length, indefinite, rest, ok := parseTagAndLength(rest)
-	if !ok || length > len(rest) {
-		return lib.Tag{}, nil, false, bytes, false
+	var length int
+	elem, length, bytes, ok = parseTagAndLength(bytes)
+	if !ok {
+		return
 	}
 
-	body = rest[:length]
-	rest = rest[length:]
+	if !elem.indefinite {
+		if length > len(bytes) {
+			ok = false
+			return
+		}
+		elem.body = bytes[:length]
+		bytes = bytes[length:]
+	}
+	rest = bytes
 	return
 }
 
@@ -175,8 +196,9 @@ func decodeObjectIdentifier(bytes []byte) (oid []uint32, ok bool) {
 	// Decode each component.
 	for len(bytes) != 0 {
 		var c uint32
-		c, bytes, ok = parseBase128(bytes)
-		if !ok {
+		var lengthOverride int
+		c, lengthOverride, bytes, ok = parseBase128(bytes)
+		if !ok || lengthOverride != 0 {
 			return nil, false
 		}
 		oid = append(oid, c)

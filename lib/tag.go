@@ -28,6 +28,9 @@ type Tag struct {
 	Class       Class
 	Number      uint32
 	Constructed bool
+	// LongFormOverride, if non-zero, is how many bytes this tag is encoded
+	// with in long form, excluding the initial byte.
+	LongFormOverride int
 }
 
 // GetAlias looks up the alias for the given tag. If one exists, it returns the
@@ -94,7 +97,7 @@ var universalTags = []struct {
 func TagByName(name string) (Tag, bool) {
 	for _, u := range universalTags {
 		if u.name == name {
-			return Tag{ClassUniversal, u.number, u.constructed}, true
+			return Tag{ClassUniversal, u.number, u.constructed, 0}, true
 		}
 	}
 	return Tag{}, false

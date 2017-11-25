@@ -24,51 +24,88 @@ import (
 
 var appendTagTests = []struct {
 	tag     lib.Tag
+	ok      bool
 	encoded []byte
 }{
-	{lib.Tag{lib.ClassUniversal, 16, true}, []byte{0x30}},
-	{lib.Tag{lib.ClassUniversal, 2, false}, []byte{0x02}},
-	{lib.Tag{lib.ClassContextSpecific, 1, true}, []byte{0xa1}},
-	{lib.Tag{lib.ClassApplication, 1234, true}, []byte{0x7f, 0x89, 0x52}},
+	{lib.Tag{lib.ClassUniversal, 16, true, 0}, true, []byte{0x30}},
+	{lib.Tag{lib.ClassUniversal, 16, true, 1}, true, []byte{0x3f, 0x10}},
+	{lib.Tag{lib.ClassUniversal, 16, true, 2}, true, []byte{0x3f, 0x80, 0x10}},
+	{lib.Tag{lib.ClassUniversal, 2, false, 0}, true, []byte{0x02}},
+	{lib.Tag{lib.ClassContextSpecific, 1, true, 0}, true, []byte{0xa1}},
+	{lib.Tag{lib.ClassApplication, 1234, true, 0}, true, []byte{0x7f, 0x89, 0x52}},
+	// Override is too small.
+	{lib.Tag{lib.ClassApplication, 1234, true, 1}, false, nil},
+	{lib.Tag{lib.ClassApplication, 1234, true, 2}, true, []byte{0x7f, 0x89, 0x52}},
+	{lib.Tag{lib.ClassApplication, 1234, true, 3}, true, []byte{0x7f, 0x80, 0x89, 0x52}},
 }
 
 func TestAppendTag(t *testing.T) {
 	for i, tt := range appendTagTests {
-		dst := appendTag(nil, tt.tag)
-		if !bytes.Equal(dst, tt.encoded) {
-			t.Errorf("%d. appendTag(nil, %v) = %v, wanted %v.", i, tt.tag, dst, tt.encoded)
-		}
+		dst, err := appendTag(nil, tt.tag)
+		if err != nil {
+			if tt.ok {
+				t.Errorf("%d. appendTag(nil, %v) unexpectedly failed: %s.", i, tt.tag, err)
+			}
+		} else if !tt.ok {
+			t.Errorf("%d. appendTag(nil, %v) unexpectedly succeeded.", i, tt.tag)
+		} else {
+			if !bytes.Equal(dst, tt.encoded) {
+				t.Errorf("%d. appendTag(nil, %v) = %v, wanted %v.", i, tt.tag, dst, tt.encoded)
+			}
 
-		dst = appendTag(dst, tt.tag)
-		if l := len(tt.encoded); len(dst) != l*2 || !bytes.Equal(dst[:l], tt.encoded) || !bytes.Equal(dst[l:], tt.encoded) {
-			t.Errorf("%d. appendTag did not preserve existing contents.", i)
+			dst, err = appendTag(dst, tt.tag)
+			if err != nil {
+				t.Errorf("%d. appendTag(dst, %v) unexpected failed: %s.", i, tt.tag, err)
+			} else if l := len(tt.encoded); len(dst) != l*2 || !bytes.Equal(dst[:l], tt.encoded) || !bytes.Equal(dst[l:], tt.encoded) {
+				t.Errorf("%d. appendTag did not preserve existing contents.", i)
+			}
 		}
 	}
 }
 
 var appendLengthTests = []struct {
-	length  int
-	encoded []byte
+	length       int
+	lengthLength int
+	ok           bool
+	encoded      []byte
 }{
-	{0, []byte{0}},
-	{5, []byte{0x05}},
-	{0x1f, []byte{0x1f}},
-	{0x80, []byte{0x81, 0x80}},
-	{0xff, []byte{0x81, 0xff}},
-	{0x100, []byte{0x82, 0x01, 0x00}},
-	{0xffffff, []byte{0x83, 0xff, 0xff, 0xff}},
+	{0, 0, true, []byte{0}},
+	{0, 1, true, []byte{0x81, 0x00}},
+	{5, 0, true, []byte{0x05}},
+	{5, 1, true, []byte{0x81, 0x05}},
+	{5, 2, true, []byte{0x82, 0x00, 0x05}},
+	{0x1f, 0, true, []byte{0x1f}},
+	{0x80, 0, true, []byte{0x81, 0x80}},
+	{0xff, 0, true, []byte{0x81, 0xff}},
+	{0x100, 0, true, []byte{0x82, 0x01, 0x00}},
+	{0xffffff, 0, true, []byte{0x83, 0xff, 0xff, 0xff}},
+	{0xffffff, 1, false, nil},
+	{0xffffff, 2, false, nil},
+	{0xffffff, 3, true, []byte{0x83, 0xff, 0xff, 0xff}},
+	{0xffffff, 4, true, []byte{0x84, 0x00, 0xff, 0xff, 0xff}},
+	{0xffffff, 128, false, nil},
 }
 
 func TestAppendLength(t *testing.T) {
 	for i, tt := range appendLengthTests {
-		dst := appendLength(nil, tt.length)
-		if !bytes.Equal(dst, tt.encoded) {
-			t.Errorf("%d. appendLength(nil, %v) = %v, wanted %v.", i, tt.length, dst, tt.encoded)
-		}
+		dst, err := appendLength(nil, tt.length, tt.lengthLength)
+		if err != nil {
+			if tt.ok {
+				t.Errorf("%d. appendLength(nil, %v, %v) unexpectedly failed: %s.", i, tt.length, tt.lengthLength, err)
+			}
+		} else if !tt.ok {
+			t.Errorf("%d. appendLength(nil, %v, %v) unexpectedly succeeded.", i, tt.length, tt.lengthLength)
+		} else {
+			if !bytes.Equal(dst, tt.encoded) {
+				t.Errorf("%d. appendLength(nil, %v, %v) = %v, wanted %v.", i, tt.length, tt.lengthLength, dst, tt.encoded)
+			}
 
-		dst = appendLength(dst, tt.length)
-		if l := len(tt.encoded); len(dst) != l*2 || !bytes.Equal(dst[:l], tt.encoded) || !bytes.Equal(dst[l:], tt.encoded) {
-			t.Errorf("%d. appendLength did not preserve existing contents.", i)
+			dst, err = appendLength(dst, tt.length, tt.lengthLength)
+			if err != nil {
+				t.Errorf("%d. appendLength(dst, %v, %v) unexpected failed: %s.", i, tt.length, tt.lengthLength, err)
+			} else if l := len(tt.encoded); len(dst) != l*2 || !bytes.Equal(dst[:l], tt.encoded) || !bytes.Equal(dst[l:], tt.encoded) {
+				t.Errorf("%d. appendLength did not preserve existing contents.", i)
+			}
 		}
 	}
 }

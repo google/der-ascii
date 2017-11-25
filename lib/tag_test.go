@@ -22,12 +22,14 @@ var tagGetAliasTests = []struct {
 	toggleConstructed bool
 	ok                bool
 }{
-	{Tag{ClassUniversal, 16, true}, "SEQUENCE", false, true},
-	{Tag{ClassUniversal, 16, false}, "SEQUENCE", true, true},
-	{Tag{ClassUniversal, 2, true}, "INTEGER", true, true},
-	{Tag{ClassUniversal, 2, false}, "INTEGER", false, true},
-	{Tag{ClassApplication, 2, false}, "", false, false},
-	{Tag{ClassUniversal, 0, false}, "", false, false},
+	{Tag{ClassUniversal, 16, true, 0}, "SEQUENCE", false, true},
+	{Tag{ClassUniversal, 16, true, 5}, "SEQUENCE", false, true},
+	{Tag{ClassUniversal, 16, false, 0}, "SEQUENCE", true, true},
+	{Tag{ClassUniversal, 16, false, 5}, "SEQUENCE", true, true},
+	{Tag{ClassUniversal, 2, true, 0}, "INTEGER", true, true},
+	{Tag{ClassUniversal, 2, false, 0}, "INTEGER", false, true},
+	{Tag{ClassApplication, 2, false, 0}, "", false, false},
+	{Tag{ClassUniversal, 0, false, 0}, "", false, false},
 }
 
 func TestTagGetAlias(t *testing.T) {
@@ -51,10 +53,10 @@ var tagByNameTests = []struct {
 	ok   bool
 }{
 	{"BOGUS", Tag{}, false},
-	{"SEQUENCE", Tag{ClassUniversal, 16, true}, true},
-	{"INTEGER", Tag{ClassUniversal, 2, false}, true},
+	{"SEQUENCE", Tag{ClassUniversal, 16, true, 0}, true},
+	{"INTEGER", Tag{ClassUniversal, 2, false, 0}, true},
 	{"OCTET STRING", Tag{}, false},
-	{"OCTET_STRING", Tag{ClassUniversal, 4, false}, true},
+	{"OCTET_STRING", Tag{ClassUniversal, 4, false, 0}, true},
 }
 
 func TestTagByName(t *testing.T) {

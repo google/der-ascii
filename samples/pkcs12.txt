@@ -2,20 +2,20 @@
 # indefinite-length encoding and constructed strings.
 # https://boringssl.googlesource.com/boringssl/+/5acc423517ec9d53e6cf2cd1b968405e0972c745/crypto/pkcs8/pkcs12_test.cc#240
 
-SEQUENCE `80`
+SEQUENCE indefinite {
   INTEGER { 3 }
-  SEQUENCE `80`
+  SEQUENCE indefinite {
     # data
     OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
-    [0] `80`
-      [OCTET_STRING CONSTRUCTED] `80`
+    [0] indefinite {
+      [OCTET_STRING CONSTRUCTED] indefinite {
         OCTET_STRING {
-          SEQUENCE `80`
-            SEQUENCE `80`
+          SEQUENCE indefinite {
+            SEQUENCE indefinite {
               # data
               OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
-              [0] `80`
-                [OCTET_STRING CONSTRUCTED] `80`
+              [0] indefinite {
+                [OCTET_STRING CONSTRUCTED] indefinite {
                   OCTET_STRING {
                     SEQUENCE {
                       SEQUENCE {
@@ -53,16 +53,16 @@ SEQUENCE `80`
                       }
                     }
                   }
-                `0000`
-              `0000`
-            `0000`
-            SEQUENCE `80`
+                }
+              }
+            }
+            SEQUENCE indefinite {
               # encryptedData
               OBJECT_IDENTIFIER { 1.2.840.113549.1.7.6 }
-              [0] `80`
-                SEQUENCE `80`
+              [0] indefinite {
+                SEQUENCE indefinite {
                   INTEGER { 0 }
-                  SEQUENCE `80`
+                  SEQUENCE indefinite {
                     # data
                     OBJECT_IDENTIFIER { 1.2.840.113549.1.7.1 }
                     SEQUENCE {
@@ -73,19 +73,19 @@ SEQUENCE `80`
                         INTEGER { 2000 }
                       }
                     }
-                    [0] `80`
+                    [0] indefinite {
                       OCTET_STRING { `1dce13707a6b0a122d0184635c078223f88a5e538fc8b4871aa298dbc626cabb2024adacdfbe736d974b6e5b45d284d4a482d0ce40134c6d4d2ec196950164f3f05f0606eaf7848fb3b06e7c9b7173b9cdac72f6a023da9b9fec16ef33d4d04d20f075a973f431c757b80d9d857cee3a247b74a05cadde5e051eeb027812b4b9c6e5c599bc05625b105208009e73ace41ddbb8bf480328053c611a8b4cd75f8cb4cd911c0bf455d41c424ad4f51538d906fc49f6e5a7095d01bdc3d1099f5d0c1943d0fa2517ad2abf896306a80203e4fe190870a17474b6b60f194d54a5b2d7373b17c05dc28af1ccedef65c8cabe02d49b1eefc9e09182b0e050c7a0cc016d55e567996513e4d29091f3760b6a2d19af61b37f4c04fe68f6b356d8f334d7040a31c837dfacd891808a30122280d724cf70af56af81fe63f1ea574cf2db305092c1eb049adff574575b58c24e6b11f3e1b30f563504f8501d7ee699a248dbea624f98c2efbf7f94c036c0f327fee2171e917d96a92b7151c3592d11501ecbceff044d16f5c2d41fdd7f5afd1de9635244765f91fde8df0a690dd36491eadd034f42a5e9a17005f3228ead701a3e944206e747373df5da3e2a3ac023d94a266913a6937cf2af045e9b88c777d093ab1bbd3d6990ab41a9bc84184d2902c1f8ff631824748f7e4433af888b935b9aae6b08a2825df3be61c3f02d314cb5b5910ffa8161adfcba91eb3b9d2241450e8e24c71c8195a87b64eda5ec5a683c858d92b7240fedf5c63161dcefa7cb8fda430542f69ebc1b9aa1e81d8d42db808355522b9500058284c354238e1d00a2163ece3dcc9eb84c59b212a223c1465086ae757e49387794f027d817388ce07300fbafbfe8ed85583eb48804c8221bb475a2c4dd06d283422157fcd8ae9c0ed86a70d1eb449cb7370405f517bef3561b06361c597b658dbbbe229a70a3e9601ac9dd813c2d4ec08ae591a7c18007477a744f3e4adcb2ccff376605cbd6e990f5ef2b7ea76651cb48b38a6f06ba8b3d3536df0e40e5a1e3dd89ab649c01159e93eaf94f9ef58bf2c2bbe5c3a3e313634f7d20e46696848dd4ca7252dcb893d4a53e6e42568046778649fef3b45b37fcb80cd763ac3c6ff0bebeb413e734e506bf17486ec02694ddedf4da9725abd69bc38ceb1709fc035a2f198550c4e6357194adc5cf08cf693bc331ecf1fa80668f14de5621129b0cdf924806cedbeb2854278ba9ef0cf4a0cc845960ed1865ca670cd11fcf594bce0727086aea53dc47b34ee40bff9a7d6b0d2f2d60d78b22f5304309e6df0103272db574525d08c75a44250f2c148f48ea1899d1ccc5dc65a53d2594a9c7ad3ea4f6e6bda770d4dc9b26cb3170af3ea4b68d21316735358667d1026c3676c920f60f30418319f5e13390bc7b8c9b8a68309eedf488c9` }
                       OCTET_STRING { `2bb00faec7e06e52` }
-                    `0000`
-                  `0000`
-                `0000`
-              `0000`
-            `0000`
-          `0000`
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
-      `0000`
-    `0000`
-  `0000`
+      }
+    }
+  }
   SEQUENCE {
     SEQUENCE {
       SEQUENCE {
@@ -98,4 +98,4 @@ SEQUENCE `80`
     OCTET_STRING { `3e872d96ea804bab3ab9ee096528bc8d` }
     INTEGER { 2000 }
   }
-`0000`
+}

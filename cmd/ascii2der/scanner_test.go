@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -27,6 +28,10 @@ func tokenToString(kind tokenKind) string {
 		return "left-curly"
 	case tokenRightCurly:
 		return "right-curly"
+	case tokenIndefinite:
+		return "indefinite"
+	case tokenLongForm:
+		return "long-form"
 	case tokenEOF:
 		return "EOF"
 	default:
@@ -53,7 +58,10 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 "\"\n\x42\\"
 
 # Uppercase hex is fine too.
-` + "`AABBCC`",
+` + "`AABBCC`" + `
+
+# Length modifiers
+indefinite long-form:2`,
 		[]token{
 			{Kind: tokenBytes, Value: []byte{0x30}},
 			{Kind: tokenBytes, Value: []byte{0x30}},
@@ -80,6 +88,8 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 			{Kind: tokenRightCurly},
 			{Kind: tokenBytes, Value: []byte{'"', '\n', 0x42, '\\'}},
 			{Kind: tokenBytes, Value: []byte{0xaa, 0xbb, 0xcc}},
+			{Kind: tokenIndefinite},
+			{Kind: tokenLongForm, Length: 2},
 			{Kind: tokenEOF},
 		},
 		true,
@@ -103,6 +113,9 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 	{"1.1.99999999999999999999999999999999999999999999999999999999999999999", nil, false},
 	// Bad tag string.
 	{"[THIS IS NOT A VALID TAG]", nil, false},
+	{"[]", nil, false},
+	// Tags may have long-form overrides.
+	{"[long-form:2 SEQUENCE]", []token{{Kind: tokenBytes, Value: []byte{0x3f, 0x80, 0x10}}, {Kind: tokenEOF}}, true},
 	// Bad hex bytes.
 	{"`hi there!`", nil, false},
 	// UTF-16 literals are parsed correctly.
@@ -237,6 +250,12 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 	{`"hello`, nil, false},
 	{`u"hello`, nil, false},
 	{`U"hello`, nil, false},
+	// Long-form with invalid number.
+	{"long-form:", nil, false},
+	{"long-form:garbage", nil, false},
+	{"long-form:2garbage", nil, false},
+	{"long-form:0", nil, false},
+	{"long-form:-1", nil, false},
 }
 
 func scanAll(in string) (tokens []token, ok bool) {
@@ -266,6 +285,8 @@ func TestScanner(t *testing.T) {
 				t.Errorf("%d. token %d was %s, wanted %s.", i, j, tokenToString(tokens[j].Kind), tokenToString(tt.tokens[j].Kind))
 			} else if tokens[j].Kind == tokenBytes && !bytes.Equal(tokens[j].Value, tt.tokens[j].Value) {
 				t.Errorf("%d. token %d had value %x, wanted %x.", i, j, tokens[j].Value, tt.tokens[j].Value)
+			} else if tokens[j].Kind == tokenLongForm && tokens[j].Length != tt.tokens[j].Length {
+				t.Errorf("%d. token %d had length %d, wanted %d.", i, j, tokens[j].Length, tt.tokens[j].Length)
 			}
 		}
 
@@ -286,6 +307,17 @@ var asciiToDERTests = []struct {
 	{"}", nil, false},
 	// Invalid token.
 	{"BOGUS", nil, false},
+	// Length overrides.
+	{"[long-form:2 INTEGER] long-form:3 { 42 }", []byte{0x1f, 0x80, 0x02, 0x83, 0x00, 0x00, 0x01, 0x2a}, true},
+	{"SEQUENCE indefinite { INTEGER { 42 } }", []byte{0x30, 0x80, 0x02, 0x01, 0x2a, 0x00, 0x00}, true},
+	// Mismatched length modifiers.
+	{"indefinite", nil, false},
+	{"indefinite SEQUENCE { }", nil, false},
+	{"long-form:2", nil, false},
+	{"long-form:2 SEQUENCE { }", nil, false},
+	// Too long of length modifiers.
+	{"[long-form:1 99999]", nil, false},
+	{"SEQUENCE long-form:1 { `" + strings.Repeat("a", 1024) + "` }", nil, false},
 }
 
 func TestASCIIToDER(t *testing.T) {
@@ -298,7 +330,7 @@ func TestASCIIToDER(t *testing.T) {
 			}
 		} else {
 			if !ok {
-				t.Errorf("%d. asciiToDER(%v) unexpectedly failed.", i, tt.in)
+				t.Errorf("%d. asciiToDER(%v) unexpectedly failed: %s.", i, tt.in, err)
 			} else if !bytes.Equal(out, tt.out) {
 				t.Errorf("%d. asciiToDER(%v) = %x wanted %x.", i, tt.in, out, tt.out)
 			}

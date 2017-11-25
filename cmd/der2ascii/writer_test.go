@@ -43,17 +43,22 @@ var tagToStringTests = []struct {
 	in  lib.Tag
 	out string
 }{
-	{lib.Tag{lib.ClassUniversal, 16, true}, "SEQUENCE"},
-	{lib.Tag{lib.ClassUniversal, 16, false}, "[SEQUENCE PRIMITIVE]"},
-	{lib.Tag{lib.ClassUniversal, 2, true}, "[INTEGER CONSTRUCTED]"},
-	{lib.Tag{lib.ClassUniversal, 2, false}, "INTEGER"},
-	{lib.Tag{lib.ClassUniversal, 1234, true}, "[UNIVERSAL 1234]"},
-	{lib.Tag{lib.ClassContextSpecific, 0, true}, "[0]"},
-	{lib.Tag{lib.ClassContextSpecific, 0, false}, "[0 PRIMITIVE]"},
-	{lib.Tag{lib.ClassApplication, 0, true}, "[APPLICATION 0]"},
-	{lib.Tag{lib.ClassApplication, 0, false}, "[APPLICATION 0 PRIMITIVE]"},
-	{lib.Tag{lib.ClassPrivate, 0, true}, "[PRIVATE 0]"},
-	{lib.Tag{lib.ClassPrivate, 0, false}, "[PRIVATE 0 PRIMITIVE]"},
+	{lib.Tag{lib.ClassUniversal, 16, true, 0}, "SEQUENCE"},
+	{lib.Tag{lib.ClassUniversal, 16, true, 1}, "[long-form:1 SEQUENCE]"},
+	{lib.Tag{lib.ClassUniversal, 16, false, 0}, "[SEQUENCE PRIMITIVE]"},
+	{lib.Tag{lib.ClassUniversal, 16, false, 1}, "[long-form:1 SEQUENCE PRIMITIVE]"},
+	{lib.Tag{lib.ClassUniversal, 2, true, 0}, "[INTEGER CONSTRUCTED]"},
+	{lib.Tag{lib.ClassUniversal, 2, false, 0}, "INTEGER"},
+	{lib.Tag{lib.ClassUniversal, 1234, true, 0}, "[UNIVERSAL 1234]"},
+	{lib.Tag{lib.ClassContextSpecific, 0, true, 0}, "[0]"},
+	{lib.Tag{lib.ClassContextSpecific, 0, true, 1}, "[long-form:1 0]"},
+	{lib.Tag{lib.ClassContextSpecific, 0, false, 0}, "[0 PRIMITIVE]"},
+	{lib.Tag{lib.ClassApplication, 0, true, 0}, "[APPLICATION 0]"},
+	{lib.Tag{lib.ClassApplication, 0, true, 1}, "[long-form:1 APPLICATION 0]"},
+	{lib.Tag{lib.ClassApplication, 0, false, 0}, "[APPLICATION 0 PRIMITIVE]"},
+	{lib.Tag{lib.ClassApplication, 0, false, 1}, "[long-form:1 APPLICATION 0 PRIMITIVE]"},
+	{lib.Tag{lib.ClassPrivate, 0, true, 0}, "[PRIVATE 0]"},
+	{lib.Tag{lib.ClassPrivate, 0, false, 0}, "[PRIVATE 0 PRIMITIVE]"},
 }
 
 func TestTagToString(t *testing.T) {
@@ -254,6 +259,24 @@ var derToASCIITests = []convertFuncTest{
 		[]byte{0x01, 0x02, 0x03},
 		"`010203`\n",
 	},
+	// Non-minimal tags get a long-form modifier.
+	{
+		[]byte("\x1f\x04\x0bhello world"),
+		"[long-form:1 OCTET_STRING] { \"hello world\" }\n",
+	},
+	{
+		[]byte("\x1f\x80\x04\x0bhello world"),
+		"[long-form:2 OCTET_STRING] { \"hello world\" }\n",
+	},
+	// Non-minimal lengths get a long-form modifier.
+	{
+		[]byte("\x04\x81\x0bhello world"),
+		"OCTET_STRING long-form:1 { \"hello world\" }\n",
+	},
+	{
+		[]byte("\x30\x81\x00"),
+		"SEQUENCE long-form:1 {}\n",
+	},
 	// Combined test of interesting cases around elements themselves.
 	{
 		[]byte{0x30, 0x07, 0x67, 0x61, 0x72, 0x62, 0x61, 0x67, 0x65, 0x04, 0x0a, 0xa0, 0x80, 0x02, 0x01, 0x01, 0x02, 0x01, 0xff, 0x00, 0x00, 0x04, 0x0b, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x30, 0x16, 0xa0, 0x80, 0x02, 0x01, 0x01, 0x02, 0x02, 0x00, 0x00, 0x30, 0x80, 0x05, 0x00, 0x06, 0x03, 0x2a, 0x03, 0x04, 0x06, 0x02, 0x80, 0x00, 0xff, 0xff, 0xff},
@@ -261,10 +284,10 @@ var derToASCIITests = []convertFuncTest{
   "garbage"
 }
 OCTET_STRING {
-  [0] ` + "`80`" + `
+  [0] indefinite {
     INTEGER { 1 }
     INTEGER { -1 }
-  ` + "`0000`" + `
+  }
 }
 OCTET_STRING { "hello world" }
 SEQUENCE {

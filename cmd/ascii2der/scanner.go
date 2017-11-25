@@ -41,6 +41,8 @@ const (
 	tokenBytes tokenKind = iota
 	tokenLeftCurly
 	tokenRightCurly
+	tokenIndefinite
+	tokenLongForm
 	tokenEOF
 )
 
@@ -63,6 +65,9 @@ type token struct {
 	Value []byte
 	// Pos is the position of the first byte of the token.
 	Pos position
+	// Length, for a tokenLongForm token, is the number of bytes to use to
+	// encode the length, not including the initial one.
+	Length int
 }
 
 var (
@@ -294,7 +299,11 @@ again:
 		if err != nil {
 			return token{}, &parseError{s.pos, err}
 		}
-		return token{Kind: tokenBytes, Value: appendTag(nil, tag), Pos: s.pos}, nil
+		value, err := appendTag(nil, tag)
+		if err != nil {
+			return token{}, &parseError{s.pos, err}
+		}
+		return token{Kind: tokenBytes, Value: value, Pos: s.pos}, nil
 	}
 
 	// Normal token. Consume up to the next whitespace character, symbol, or
@@ -316,7 +325,12 @@ loop:
 	// See if it is a tag.
 	tag, ok := lib.TagByName(symbol)
 	if ok {
-		return token{Kind: tokenBytes, Value: appendTag(nil, tag), Pos: start}, nil
+		value, err := appendTag(nil, tag)
+		if err != nil {
+			// This is impossible; built-in tags always encode.
+			return token{}, &parseError{s.pos, err}
+		}
+		return token{Kind: tokenBytes, Value: value, Pos: start}, nil
 	}
 
 	if regexpInteger.MatchString(symbol) {
@@ -350,6 +364,18 @@ loop:
 
 	if symbol == "FALSE" {
 		return token{Kind: tokenBytes, Value: []byte{0x00}, Pos: s.pos}, nil
+	}
+
+	if symbol == "indefinite" {
+		return token{Kind: tokenIndefinite}, nil
+	}
+
+	if isLongFormOverride(symbol) {
+		l, err := decodeLongFormOverride(symbol)
+		if err != nil {
+			return token{}, &parseError{start, err}
+		}
+		return token{Kind: tokenLongForm, Length: l}, nil
 	}
 
 	return token{}, fmt.Errorf("unrecognized symbol '%s'", symbol)
@@ -392,10 +418,14 @@ func (s *scanner) consumeUpTo(b byte) (string, bool) {
 
 func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 	var out []byte
+	var lengthModifier *token
 	for {
 		token, err := scanner.Next()
 		if err != nil {
 			return nil, err
+		}
+		if lengthModifier != nil && token.Kind != tokenLeftCurly {
+			return nil, &parseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
 		}
 		switch token.Kind {
 		case tokenBytes:
@@ -405,13 +435,33 @@ func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			out = appendLength(out, len(child))
+			var lengthOverride int
+			if lengthModifier != nil {
+				if lengthModifier.Kind == tokenIndefinite {
+					out = append(out, 0x80)
+					out = append(out, child...)
+					out = append(out, 0x00, 0x00)
+					lengthModifier = nil
+					break
+				}
+				if lengthModifier.Kind == tokenLongForm {
+					lengthOverride = lengthModifier.Length
+				}
+			}
+			out, err = appendLength(out, len(child), lengthOverride)
+			if err != nil {
+				// appendLength may fail if the lengthModifier was incompatible.
+				return nil, &parseError{lengthModifier.Pos, err}
+			}
 			out = append(out, child...)
+			lengthModifier = nil
 		case tokenRightCurly:
 			if leftCurly != nil {
 				return out, nil
 			}
 			return nil, &parseError{token.Pos, errors.New("unmatched '}'")}
+		case tokenLongForm, tokenIndefinite:
+			lengthModifier = &token
 		case tokenEOF:
 			if leftCurly == nil {
 				return out, nil

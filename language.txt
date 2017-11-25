@@ -103,15 +103,17 @@ FALSE
 # Square brackets denote a tag expression, similar to ASN.1's syntax. Unlike
 # ASN.1, the constructed bit is treated as part of the tag.
 #
-# A tag expression contains one to three components separated by space (0x20):
-# an optional tag class, a decimal tag number, and an optional constructed bit.
-# By default, tags have class context-specific and set the constructed bit.
-# Alternatively, the first two components may be replaced by a type name (see
-# below).
+# A tag expression contains components separated by space (0x20): an optional
+# long-form modifier, an optional tag class, a decimal tag number, and an
+# optional constructed bit. By default, tags have class context-specific and
+# set the constructed bit. Alternatively, the first two components may be
+# replaced by a type name (see below).
 #
 # A tag expression emits the tag portion of a DER element with the specified
 # tag class, tag number, and constructed bit. Note that it does not emit an
-# element body. Those are specified separately.
+# element body. Those are specified separately. The long-form modifiers forces
+# long tag number form with the specified number of bytes after the leading
+# byte.
 #
 # Examples:
 [0]
@@ -121,6 +123,7 @@ FALSE
 [PRIVATE 2]
 [UNIVERSAL 16] # This is a SEQUENCE.
 [UNIVERSAL 2 PRIMITIVE] # This is an INTEGER.
+[long-form:2 UNIVERSAL 2 PRIMTIVE] # This is `1f0002` instead of `02`.
 
 # As a shorthand, one may write type names from ASN.1, replacing spaces with
 # underscore. These specify tag, number, and the constructed bit. The
@@ -147,6 +150,10 @@ OCTET_STRING
 # DER element, but there is no requirement to do so. See below for examples of
 # intentionally malformed test inputs where tags and length prefixes do not
 # match.
+#
+# An open curly brace may optionally be preceded by 'indefinite' use
+# indefinite-length encoding. It may be preceded by 'long-form:N' to use force
+# long-form encoding with the specified number of bytes after the leading byte.
 
 # This is an OID.
 OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585 }
@@ -167,6 +174,15 @@ SEQUENCE {
     INTEGER { `00ff` }
   }
 }
+
+# This is an indefinite-length SEQUENCE.
+SEQUENCE indefinite {
+  INTEGER { 1 }
+  INTEGER { `00ff` }
+}
+
+# This INTEGER encodes its length as `8101` instead of `01`.
+INTEGER long-form:1 { 5 }
 
 # Note that curly braces are not optional, even in explicit tagging. Thus this
 # isn't the same thing, despite the similar ASN.1 syntax.
@@ -196,11 +212,16 @@ SEQUENCE {
 # These primitives may be combined with raw byte strings to produce other
 # encodings.
 
-# This is an indefinite-length SEQUENCE.
+# This is another way to write an indefinite-length SEQUENCE.
 SEQUENCE `80`
   INTEGER { 1 }
   INTEGER { 2 }
 `0000`
+
+# This is an indefinite-length SEQUENCE missing the EOC marker.
+SEQUENCE `80`
+  INTEGER { 1 }
+  INTEGER { 2 }
 
 # This is a SEQUENCE with the wrong constructed bit.
 [SEQUENCE PRIMITIVE] {
@@ -208,8 +229,15 @@ SEQUENCE `80`
   INTEGER { 2 }
 }
 
-# This is a SEQUENCE with the tag incorrectly encoded in high tag number form.
+# This is a SEQUENCE with the tag encoded in high tag number form. This is
+# incorrect in DER, but valid in BER.
 `3f90` {
+  INTEGER { 1 }
+  INTEGER { 2 }
+}
+
+# Note the above may also be written like this.
+[long-form:1 SEQUENCE] {
   INTEGER { 1 }
   INTEGER { 2 }
 }
@@ -240,7 +268,8 @@ SEQUENCE `aabbcc`
 #
 # 2. Minimally encode the tag in the BER element. If the element is
 #    definite-length, encode the body wrapped in curly braces. If the element
-#    is indefinite-length, encode the body wrapped in `80` and `0000`.
+#    is indefinite-length but missing the EOC marker, use `80` for the opening
+#    brace and omit the closing one.
 #
 # 3. If the element has the constructed bit, recurse to encode the body.
 #
