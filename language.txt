@@ -111,9 +111,11 @@ FALSE
 #
 # A tag expression emits the tag portion of a DER element with the specified
 # tag class, tag number, and constructed bit. Note that it does not emit an
-# element body. Those are specified separately. The long-form modifiers forces
-# long tag number form with the specified number of bytes after the leading
-# byte.
+# element body. Those are specified separately.
+#
+# The optional long-form modifier specifies long tag number form with the
+# specified number of bytes after the leading byte. This may be used for
+# non-minimal tag encodings.
 #
 # Examples:
 [0]
@@ -151,9 +153,10 @@ OCTET_STRING
 # intentionally malformed test inputs where tags and length prefixes do not
 # match.
 #
-# An open curly brace may optionally be preceded by 'indefinite' use
-# indefinite-length encoding. It may be preceded by 'long-form:N' to use force
-# long-form encoding with the specified number of bytes after the leading byte.
+# An open curly brace may optionally be preceded by 'indefinite' to use
+# indefinite-length encoding. It may alternatively be preceded by 'long-form:N'
+# to use long-form encoding with the specified number of bytes after the
+# leading byte. This may be used for non-minimal length encodings.
 
 # This is an OID.
 OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585 }
