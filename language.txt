@@ -178,6 +178,14 @@ SEQUENCE {
   }
 }
 
+# Note that curly braces are not optional, even in explicit tagging. Thus this
+# isn't the same thing, despite the similar ASN.1 syntax. (It concatenates the
+# [0] and SEQUENCE tags with no length prefix in between.)
+[0] SEQUENCE {
+  INTEGER { 1 }
+  INTEGER { `00ff` }
+}
+
 # This is an indefinite-length SEQUENCE.
 SEQUENCE indefinite {
   INTEGER { 1 }
@@ -186,13 +194,6 @@ SEQUENCE indefinite {
 
 # This INTEGER encodes its length as `8101` instead of `01`.
 INTEGER long-form:1 { 5 }
-
-# Note that curly braces are not optional, even in explicit tagging. Thus this
-# isn't the same thing, despite the similar ASN.1 syntax.
-[0] SEQUENCE {
-  INTEGER { 1 }
-  INTEGER { `00ff` }
-}
 
 # This is a BER constructed OCTET STRING.
 [OCTET_STRING CONSTRUCTED] {
