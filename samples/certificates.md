@@ -29,7 +29,7 @@ tool, here is a sample command:
         xxd -p -c 9999 > signature.txt
 
 For other options, replace `-sha256` with a different digest or pass `-sigopt`.
-See [OpenSSL's documentation](https://www.openssl.org/docs/manmaster/apps/dgst.html)
+See [OpenSSL's documentation](https://www.openssl.org/docs/man1.1.1/man1/dgst.html)
 for details. Note that, for a valid certificate, the signature parameters
 should match the `signatureAlgorithm` field. If using different signing
 parameters, update it and the copy in the `tbsCertificate`.
