@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -23,6 +24,7 @@ import (
 
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
+var isPem = flag.Bool("p", false, "treat the input as a PEM file")
 
 func main() {
 	flag.Parse()
@@ -47,6 +49,11 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading input: %s\n", err)
 		os.Exit(1)
+	}
+
+	if *isPem {
+		pemBlock, _ := pem.Decode(inBytes)
+		inBytes = pemBlock.Bytes
 	}
 
 	outFile := os.Stdout
