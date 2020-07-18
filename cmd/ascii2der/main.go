@@ -24,7 +24,7 @@ import (
 
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
-var pemType = flag.String("p", "", "if provided, format the output as a PEM block with this type")
+var pemType = flag.String("pem", "", "if provided, format the output as a PEM block with this type")
 
 func main() {
 	flag.Parse()
