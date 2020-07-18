@@ -24,7 +24,7 @@ import (
 
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
-var isPem = flag.Bool("p", false, "treat the input as a PEM file")
+var isPem = flag.Bool("pem", false, "treat the input as a PEM file")
 
 func main() {
 	flag.Parse()
@@ -53,6 +53,10 @@ func main() {
 
 	if *isPem {
 		pemBlock, _ := pem.Decode(inBytes)
+		if pemBlock == nil {
+			fmt.Fprintf(os.Stderr, "-pem provided, but input could not be parsed as a PEM\n")
+			os.Exit(1)
+		}
 		inBytes = pemBlock.Bytes
 	}
 
