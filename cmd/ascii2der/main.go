@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -23,6 +24,7 @@ import (
 
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
+var pemType = flag.String("p", "", "if provided, format the output as a PEM block with this type")
 
 func main() {
 	flag.Parse()
@@ -53,6 +55,13 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Syntax error: %s\n", err)
 		os.Exit(1)
+	}
+
+	if *pemType != "" {
+		outBytes = pem.EncodeToMemory(&pem.Block{
+			Type:  *pemType,
+			Bytes: outBytes,
+		})
 	}
 
 	outFile := os.Stdout
