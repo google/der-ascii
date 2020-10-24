@@ -108,13 +108,13 @@ func decodeTagString(s string) (internal.Tag, error) {
 		case "PRIMITIVE":
 			tag.Constructed = false
 		default:
-			return internal.Tag{}, fmt.Errorf("unexpected tag component '%s'", ss[0])
+			return internal.Tag{}, fmt.Errorf("unexpected tag component %q", ss[0])
 		}
 		ss = ss[1:]
 	}
 
 	if len(ss) != 0 {
-		return internal.Tag{}, fmt.Errorf("excess tag component '%s'", ss[0])
+		return internal.Tag{}, fmt.Errorf("excess tag component %q", ss[0])
 	}
 
 	return tag, nil

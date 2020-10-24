@@ -378,7 +378,7 @@ loop:
 		return token{Kind: tokenLongForm, Length: l}, nil
 	}
 
-	return token{}, fmt.Errorf("unrecognized symbol '%s'", symbol)
+	return token{}, fmt.Errorf("unrecognized symbol %q", symbol)
 }
 
 func (s *scanner) isEOF() bool {
