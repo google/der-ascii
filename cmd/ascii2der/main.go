@@ -30,7 +30,8 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() > 0 {
-		fmt.Fprintf(os.Stderr, "Usage: %s [-i INPUT] [-o OUTPUT]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [OPTION...]\n", os.Args[0])
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
