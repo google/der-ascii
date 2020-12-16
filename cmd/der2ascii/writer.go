@@ -22,6 +22,7 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/google/der-ascii/internal"
 )
@@ -169,7 +170,7 @@ func bytesToUTF16String(in []byte) string {
 			out.WriteString(`\"`)
 		} else if u == '\\' {
 			out.WriteString(`\\`)
-		} else if !utf16.IsSurrogate(u) && unicode.IsPrint(u) {
+		} else if utf8.RuneLen(u) > 0 && unicode.IsPrint(u) {
 			out.WriteRune(u)
 		} else if u <= 0xff {
 			fmt.Fprintf(&out, `\x%02x`, u)
@@ -191,15 +192,16 @@ func bytesToUTF32String(in []byte) string {
 	var out bytes.Buffer
 	out.WriteString(`U"`)
 	for i := 0; i < len(in)/4; i++ {
-		u := rune(in[4*i])<<24 | rune(in[4*i+1])<<16 | rune(in[4*i+2])<<8 | rune(in[4*i+3])
+		// Note rune is signed, so we use uint32 here.
+		u := uint32(in[4*i])<<24 | uint32(in[4*i+1])<<16 | uint32(in[4*i+2])<<8 | uint32(in[4*i+3])
 		if u == '\n' {
 			out.WriteString(`\n`)
 		} else if u == '"' {
 			out.WriteString(`\"`)
 		} else if u == '\\' {
 			out.WriteString(`\\`)
-		} else if unicode.IsPrint(u) {
-			out.WriteRune(u)
+		} else if utf8.RuneLen(rune(u)) > 0 && unicode.IsPrint(rune(u)) {
+			out.WriteRune(rune(u))
 		} else if u <= 0xff {
 			fmt.Fprintf(&out, `\x%02x`, u)
 		} else if u <= 0xffff {

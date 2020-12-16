@@ -218,6 +218,20 @@ var derToASCIITests = []convertFuncTest{
 		[]byte("\x1c\x0c\x00\x00\x00\x00\x00\x00\xe0\x00\x00\x0f\x00\x00"),
 		`UniversalString { U"\x00\ue000\U000f0000" }` + "\n",
 	},
+	// Values too out of range to be a code point are escaped.
+	{
+		[]byte("\x1c\x04\x00\x00\xd8\x34"),
+		"UniversalString { U\"\\ud834\" }\n",
+	},
+	{
+		[]byte("\x1c\x04\xff\xff\xff\xff"),
+		"UniversalString { U\"\\Uffffffff\" }\n",
+	},
+	// Don't misinterpret negative runes as printable.
+	{
+		[]byte("\x1c\x04\x80\x00\x00\x41"),
+		"UniversalString { U\"\\U80000041\" }\n",
+	},
 	// Leftover bytes are encoded with a trailing hex literal.
 	{
 		[]byte("\x1c\x05\x00\x00\x00z\x01"),
