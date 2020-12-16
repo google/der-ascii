@@ -195,7 +195,7 @@ var derToASCIITests = []convertFuncTest{
 	// Odd-length BMPStrings get an extra hex literal at the end.
 	{
 		[]byte("\x1e\x0b\x00h\x00e\x00l\x00l\x00o "),
-		"BMPString { u\"hello\" `\\x20` }\n",
+		"BMPString { u\"hello\" `20` }\n",
 	},
 	// Unpaired surrogates are tolerated, but always escaped.
 	{
@@ -221,15 +221,15 @@ var derToASCIITests = []convertFuncTest{
 	// Leftover bytes are encoded with a trailing hex literal.
 	{
 		[]byte("\x1c\x05\x00\x00\x00z\x01"),
-		"UniversalString { U\"z\" `\\x01` }\n",
+		"UniversalString { U\"z\" `01` }\n",
 	},
 	{
 		[]byte("\x1c\x06\x00\x00\x00z\x01\x02"),
-		"UniversalString { U\"z\" `\\x01\\x02` }\n",
+		"UniversalString { U\"z\" `0102` }\n",
 	},
 	{
 		[]byte("\x1c\x07\x00\x00\x00z\x01\x02\x03"),
-		"UniversalString { U\"z\" `\\x01\\x02\\x03` }\n",
+		"UniversalString { U\"z\" `010203` }\n",
 	},
 	// Unpaired surrogates are tolerated, but always escaped.
 	{

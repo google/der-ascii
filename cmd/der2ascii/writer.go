@@ -181,7 +181,7 @@ func bytesToUTF16String(in []byte) string {
 
 	// Print the trailing byte if needed.
 	if len(in)&1 == 1 {
-		fmt.Fprintf(&out, " `\\x%02x`", in[len(in)-1])
+		fmt.Fprintf(&out, " `%02x`", in[len(in)-1])
 	}
 
 	return out.String()
@@ -214,7 +214,7 @@ func bytesToUTF32String(in []byte) string {
 	if len(in)&3 != 0 {
 		fmt.Fprintf(&out, " `")
 		for i := len(in) &^ 3; i < len(in); i++ {
-			fmt.Fprintf(&out, "\\x%02x", in[i])
+			fmt.Fprintf(&out, "%02x", in[i])
 		}
 		fmt.Fprintf(&out, "`")
 	}
