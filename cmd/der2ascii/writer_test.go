@@ -301,6 +301,19 @@ SEQUENCE {
 }
 ` + "`ffffff`\n",
 	},
+	// Outside of indefinite lengths, we parse EOCs as elements and
+	// generally accept non-empty tag zero.
+	{
+		[]byte{0x20, 0x80, 0x00, 0x02, 0x00, 0x00, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		`[UNIVERSAL 0] indefinite {
+  [UNIVERSAL 0 PRIMITIVE] { ` + "`0000`" + ` }
+  [UNIVERSAL 0] {
+    [UNIVERSAL 0 PRIMITIVE] {}
+  }
+}
+[UNIVERSAL 0 PRIMITIVE] {}
+` + "`00`\n",
+	},
 }
 
 func TestDERToASCII(t *testing.T) {

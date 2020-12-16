@@ -44,8 +44,10 @@ var parseTagTests = []struct {
 	// Overflow.
 	{[]byte{0xff, 0x8f, 0xff, 0xff, 0xff, 0x7f}, internal.Tag{Class: internal.ClassPrivate, Number: (1 << 32) - 1, Constructed: true}, true},
 	{[]byte{0xff, 0x9f, 0xff, 0xff, 0xff, 0x7f}, internal.Tag{}, false},
-	// EOC.
-	{[]byte{0x00}, internal.Tag{}, false},
+	// Universal tag zero is reserved for EOC, but we parse it here because
+	// DER and BER parsers sometimes accept such elements in ANY.
+	{[]byte{0x00}, internal.Tag{Number: 0}, true},
+	{[]byte{0x20}, internal.Tag{Number: 0, Constructed: true}, true},
 }
 
 func TestParseTag(t *testing.T) {
@@ -78,6 +80,7 @@ func TestParseTag(t *testing.T) {
 }
 
 var sequenceTag = internal.Tag{Class: internal.ClassUniversal, Number: 16, Constructed: true}
+var zeroTag = internal.Tag{Class: internal.ClassUniversal, Number: 0, Constructed: false}
 
 var parseTagAndLengthTests = []struct {
 	in     []byte
@@ -106,6 +109,11 @@ var parseTagAndLengthTests = []struct {
 	{[]byte{}, element{}, 0, false},
 	// Primitive + indefinite length is illegal.
 	{[]byte{0x02, 0x80}, element{}, 0, false},
+	// EOC is treated as an element with tag number zero. Although
+	// universal tag zero is reserved, DER and BER parsers sometimes accept
+	// such elements in ANY.
+	{[]byte{0x00, 0x00}, element{tag: zeroTag}, 0, true},
+	{[]byte{0x00, 0x01}, element{tag: zeroTag}, 1, true},
 }
 
 func TestParseTagAndLength(t *testing.T) {

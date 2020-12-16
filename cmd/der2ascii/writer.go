@@ -31,10 +31,19 @@ import (
 func isMadeOfElements(in []byte) bool {
 	var indefiniteCount int
 	for len(in) != 0 {
-		if indefiniteCount > 0 && len(in) >= 2 && in[0] == 0 && in[1] == 0 {
-			in = in[2:]
-			indefiniteCount--
-			continue
+		if startsWithEOC(in) {
+			if indefiniteCount > 0 {
+				in = in[2:]
+				indefiniteCount--
+				continue
+			} else {
+				// parseElement will parse an unexpected EOC an
+				// element with tag number zero. This will
+				// cause us to recurse into zero OCTET STRINGs,
+				// which is confusing. Require a stricter parse
+				// in this function.
+				return false
+			}
 		}
 
 		elem, rest, ok := parseElement(in)

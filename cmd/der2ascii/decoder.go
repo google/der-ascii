@@ -48,8 +48,8 @@ func parseBase128(bytes []byte) (ret uint32, lengthOverride int, rest []byte, ok
 func parseTag(bytes []byte) (tag internal.Tag, rest []byte, ok bool) {
 	rest = bytes
 
-	// Consume the first byte. Reject EOC.
-	if len(rest) == 0 || rest[0] == 0 {
+	// Consume the first byte.
+	if len(rest) == 0 {
 		return
 	}
 	b := rest[0]
@@ -141,6 +141,8 @@ func parseTagAndLength(bytes []byte) (elem element, length int, rest []byte, ok 
 
 // parseElement parses an element from bytes. If the element is
 // indefinite-length body is left as nil and instead indefinite is set to true.
+// Note this function will treat a BER EOC as an empty element with tag number
+// zero. EOC detection must be handled externally.
 func parseElement(bytes []byte) (elem element, rest []byte, ok bool) {
 	rest = bytes
 	var length int
