@@ -170,7 +170,7 @@ func bytesToUTF16String(in []byte) string {
 			out.WriteString(`\"`)
 		} else if u == '\\' {
 			out.WriteString(`\\`)
-		} else if utf8.RuneLen(u) > 0 && unicode.IsPrint(u) {
+		} else if utf8.ValidRune(u) && unicode.IsPrint(u) {
 			out.WriteRune(u)
 		} else if u <= 0xff {
 			fmt.Fprintf(&out, `\x%02x`, u)
@@ -200,7 +200,7 @@ func bytesToUTF32String(in []byte) string {
 			out.WriteString(`\"`)
 		} else if u == '\\' {
 			out.WriteString(`\\`)
-		} else if utf8.RuneLen(rune(u)) > 0 && unicode.IsPrint(rune(u)) {
+		} else if utf8.ValidRune(rune(u)) && unicode.IsPrint(rune(u)) {
 			out.WriteRune(rune(u))
 		} else if u <= 0xff {
 			fmt.Fprintf(&out, `\x%02x`, u)
