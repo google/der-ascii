@@ -207,6 +207,23 @@ indefinite long-form:2`,
 	// Invalid UTF-8 is illegal in a UTF-16 or UTF-32 literal.
 	{"u\"\xff\xff\xff\xff\"", nil, false},
 	{"U\"\xff\xff\xff\xff\"", nil, false},
+	// A correctly-encoded replacement character is fine, however.
+	{
+		"u\"\xef\xbf\xbd\"",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0xff, 0xfd}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"U\"\xef\xbf\xbd\"",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x00, 0x00, 0xff, 0xfd}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
 	// Bad or truncated escape sequences.
 	{`"\`, nil, false},
 	{`"\x`, nil, false},

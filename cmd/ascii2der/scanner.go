@@ -197,7 +197,10 @@ func (s *scanner) parseUTF16String() (token, error) {
 			bytes = appendUTF16(bytes, r)
 		default:
 			r, n := utf8.DecodeRuneInString(s.text[s.pos.Offset:])
-			if r == utf8.RuneError {
+			// Note DecodeRuneInString may return utf8.RuneError if there is a
+			// legitimate replacement charaacter in the input. The documentation
+			// says errors return (RuneError, 0) or (RuneError, 1).
+			if r == utf8.RuneError && n <= 1 {
 				return token{}, &parseError{s.pos, errors.New("invalid UTF-8")}
 			}
 			s.advanceBytes(n)
@@ -231,7 +234,10 @@ func (s *scanner) parseUTF32String() (token, error) {
 			bytes = appendUTF32(bytes, r)
 		default:
 			r, n := utf8.DecodeRuneInString(s.text[s.pos.Offset:])
-			if r == utf8.RuneError {
+			// Note DecodeRuneInString may return utf8.RuneError if there is a
+			// legitimate replacement charaacter in the input. The documentation
+			// says errors return (RuneError, 0) or (RuneError, 1).
+			if r == utf8.RuneError && n <= 1 {
 				return token{}, &parseError{s.pos, errors.New("invalid UTF-8")}
 			}
 			s.advanceBytes(n)
