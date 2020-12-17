@@ -85,7 +85,7 @@ func appendLength(dst []byte, length, lengthLength int) ([]byte, error) {
 	}
 
 	// Long-form length. Count how many bytes are needed.
-	var l byte
+	var l int
 	for n := length; n != 0; n >>= 8 {
 		l++
 	}
@@ -93,12 +93,12 @@ func appendLength(dst []byte, length, lengthLength int) ([]byte, error) {
 		if lengthLength > 127 {
 			return nil, errors.New("length override too large")
 		}
-		if byte(lengthLength) < l {
+		if lengthLength < l {
 			return nil, fmt.Errorf("length override of %d too small, need at least %d bytes", lengthLength, l)
 		}
-		l = byte(lengthLength)
+		l = lengthLength
 	}
-	dst = append(dst, 0x80|l)
+	dst = append(dst, 0x80|byte(l))
 	for ; l > 0; l-- {
 		dst = append(dst, byte(length>>uint(8*(l-1))))
 	}

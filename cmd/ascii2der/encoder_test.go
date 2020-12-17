@@ -84,6 +84,9 @@ var appendLengthTests = []struct {
 	{0xffffff, 3, true, []byte{0x83, 0xff, 0xff, 0xff}},
 	{0xffffff, 4, true, []byte{0x84, 0x00, 0xff, 0xff, 0xff}},
 	{0xffffff, 128, false, nil},
+	{0, -1, false, nil},
+	// Longest possible long-form length, and test for a potential overflow.
+	{1, 127, true, append([]byte{0xff}, append(make([]byte, 126), 1)...)},
 }
 
 func TestAppendLength(t *testing.T) {
