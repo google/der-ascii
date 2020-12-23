@@ -70,7 +70,7 @@ func main() {
 		}
 		defer outFile.Close()
 	}
-	_, err = outFile.Write([]byte(derToASCII(inBytes)))
+	_, err = outFile.WriteString(derToASCII(inBytes))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing output: %s\n", err)
 		os.Exit(1)
