@@ -16,15 +16,19 @@ package main
 
 import (
 	"encoding/pem"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
+	"unicode"
 )
 
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
 var isPem = flag.Bool("pem", false, "treat the input as a PEM file")
+var isHex = flag.Bool("hex", false, "treat the input as hex, ignoring punctuation and whitespace")
 
 func main() {
 	flag.Parse()
@@ -59,6 +63,18 @@ func main() {
 			os.Exit(1)
 		}
 		inBytes = pemBlock.Bytes
+	} else if *isHex {
+		stripped := strings.Map(func(r rune) rune {
+			if unicode.IsSpace(r) || unicode.IsPunct(r) {
+				return -1
+			}
+			return r
+		}, string(inBytes))
+		inBytes, err = hex.DecodeString(stripped)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "-hex provided, but input could not be parsed as hex: %s\n", err)
+			os.Exit(1)
+		}
 	}
 
 	outFile := os.Stdout
