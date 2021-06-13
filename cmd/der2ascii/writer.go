@@ -355,6 +355,37 @@ func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []
 					// Emit the remaining as a DER element.
 					derToASCIIImpl(out, elem.body[1:], indent+1, false) // Adds a trailing newline.
 					addLine(out, indent, "}")
+				} else if len(elem.body) == 1 && elem.body[0] == 0 {
+					addLine(out, indent, fmt.Sprintf("%s b`` }", header))
+				} else if len(elem.body) > 1 && len(elem.body) <= 5 && elem.body[0] < 8 {
+					// Convert to a b`` literal when the leading byte is valid and the
+					// number of data octets is at most 4; we limit the length for
+					// readability.
+					bits := new(strings.Builder)
+
+					// The first octet is the number of unused bits.
+					significant := 8 - elem.body[0]
+					for i, octet := range elem.body[1:] {
+						// Last octet gets some special handling.
+						isLast := i == len(elem.body)-2
+						for j := 0; j < 8; j++ {
+							if isLast && int(significant) == j {
+								if octet == 0 {
+									break
+								}
+								bits.WriteRune('|')
+							}
+
+							if octet&0x80 == 0 {
+								bits.WriteRune('0')
+							} else {
+								bits.WriteRune('1')
+							}
+							octet <<= 1
+						}
+					}
+
+					addLine(out, indent, fmt.Sprintf("%s b`%s` }", header, bits))
 				} else if len(elem.body) > 1 && elem.body[0] < 8 {
 					// The first byte is the number of unused bits.
 					addLine(out, indent, fmt.Sprintf("%s %s %s }", header, bytesToString(elem.body[:1]), bytesToString(elem.body[1:])))

@@ -118,6 +118,8 @@ indefinite long-form:2`,
 	{"[long-form:2 SEQUENCE]", []token{{Kind: tokenBytes, Value: []byte{0x3f, 0x80, 0x10}}, {Kind: tokenEOF}}, true},
 	// Bad hex bytes.
 	{"`hi there!`", nil, false},
+	// Bad bit characters.
+	{"b`hi there!`", nil, false},
 	// UTF-16 literals are parsed correctly.
 	{
 		`u""`,
@@ -224,6 +226,110 @@ indefinite long-form:2`,
 		},
 		true,
 	},
+	// BIT STRING literals are parsed correctly.
+	{
+		"b``",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x00}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`1`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x07, 0x100 - (1 << 7)}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`11`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x06, 0x100 - (1 << 6)}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`111`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x05, 0x100 - (1 << 5)}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`1111`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x04, 0x100 - (1 << 4)}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`11111`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x03, 0x100 - (1 << 3)}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`111111`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x02, 0x100 - (1 << 2)}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`1111111`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x01, 0x100 - (1 << 1)}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`1010101001010101`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x00, 0xaa, 0x55}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	{
+		"b`101010100101`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x04, 0xaa, 0x50}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	// We can stick a | in the middle of a BIT STRING to add "explicit" padding.
+	{
+		"b`101010100|1010101`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x07, 0xaa, 0x55}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	// If explicit padding does not end at a byte boundary, the remaining padding
+	// bits are zero.
+	{
+		"b`101010100101|010`",
+		[]token{
+			{Kind: tokenBytes, Value: []byte{0x04, 0xaa, 0x54}},
+			{Kind: tokenEOF},
+		},
+		true,
+	},
+	// Padding that passes a byte boundary is an error.
+	{"b`0000000|01`", nil, false},
+	// Extra |s are an error.
+	{"b`0|0|0`", nil, false},
 	// Bad or truncated escape sequences.
 	{`"\`, nil, false},
 	{`"\x`, nil, false},
@@ -267,6 +373,7 @@ indefinite long-form:2`,
 	{`"hello`, nil, false},
 	{`u"hello`, nil, false},
 	{`U"hello`, nil, false},
+	{"b`0101", nil, false},
 	// Long-form with invalid number.
 	{"long-form:", nil, false},
 	{"long-form:garbage", nil, false},

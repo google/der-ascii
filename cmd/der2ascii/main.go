@@ -15,8 +15,8 @@
 package main
 
 import (
-	"encoding/pem"
 	"encoding/hex"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"

@@ -76,6 +76,32 @@ Unicode code point."
 `AbCdEf`
 
 
+# Bit string literals.
+
+# A backtick string beginning with 'b' is a bit string literal. 0 or 1
+# characters denote bits in a bit string. | characters are interpreted as below.
+# No other characters may appear. The emit the contents of the bit string's DER
+# encoding as a BIT STRING. (Big-endian bit order, prefixed with the number of
+# trailing padding bits)
+
+# This encodes as `00aa`.
+b`10101010`
+
+# This encodes as `04a0`.
+b`1010`
+
+# A single | may appear, which marks the beginning of explicit padding bits. BER
+# permits any bit sequence after the padding bytes. However, it is an error for
+# padding to cross the byte boundary.
+
+# This encodes as `04aa`.
+b`1010|1010`
+
+# This is an error, since only four padding bits are available for the user to
+# specify.
+# b`1010|10101`
+
+
 # Integers.
 
 # Tokens which match /-?[0-9]+/ are integer tokens. They emit the contents of
@@ -288,11 +314,24 @@ SEQUENCE `aabbcc`
 #    c. If the tag is BOOLEAN and the body is valid, encode as TRUE or FALSE.
 #       Otherwise encode as a hex literal.
 #
-#    d. If the tag is BIT STRING and the body is non-empty, encode the first
-#       byte as a separate hex literal. If this value is non-zero, encode the
-#       remainder as a raw byte string. Otherwise, apply step g to encode the
-#       body. This is to account for X.509 incorrectly using BIT STRING
-#       instead of OCTET STRING for SubjectPublicKeyInfo and signatures.
+#    d. If the tag is a BIT STRING:
+#       
+#       i.   If the body is a valid bit string, contains a whole number of
+#            bytes, and may be parsed as a series of BER elements with no
+#            trailing data, encode as `00` followed by recursing into the body
+#            as in step g. This accounts for X.509 incorrectly using BIT STRING
+#            instead of OCTET STRING for SubjectPublicKeyInfo and signatures.
+#
+#       ii.  If the body is a valid bit string with at most 32 bits, encode as a
+#            bit string literal. If any padding bits are non-zero, they are
+#            encoded explicitly.
+#
+#       iii. If the body is a valid bit string with more than 32 bits, encode as
+#            apair of hex literals, containing the initial byte and the data
+#            bytes.
+#
+#       iv.  Otherwise, the body is not a valid bit string. Encode as a single
+#            hex literal.
 #
 #    e. If the tag is BMPString, decode the body as UTF-16 and encode as a
 #       UTF-16 literal. Unpaired surrogates and unprintable code points are
