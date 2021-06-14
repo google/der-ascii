@@ -59,6 +59,10 @@ const (
 	tokenRightCurly
 	tokenIndefinite
 	tokenLongForm
+	tokenComma
+	tokenLeftParen
+	tokenRightParen
+	tokenWord
 	tokenEOF
 )
 
@@ -103,6 +107,8 @@ var (
 	regexpOID     = regexp.MustCompile(`^[0-9]+(\.[0-9]+)+$`)
 )
 
+type Builtin func(args [][]byte) ([]byte, error)
+
 // A Scanner represents parsing state for a DER ASCII file.
 //
 // A zero-value Scanner is ready to begin parsing (given that Input is set to
@@ -112,6 +118,15 @@ var (
 type Scanner struct {
 	// Input is the input text being processed.
 	Input string
+	// Builtins is a table of builtin functions that can be called with the usual
+	// function call syntax in a DER ASCII file. NewScanner will return a Scanner
+	// with a pre-populated table consisting of those functions defined in
+	// language.txt, but users may add or remove whatever functions they wish.
+	Builtins map[string]Builtin
+	// Vars is a table of variables that builtins can use to store and retrieve
+	// state, such as via the define() and var() builtins.
+	Vars map[string][]byte
+
 	// Position is the current position at which parsing should
 	// resume. The Offset field is used for indexing into Input; the remaining
 	// fields are used for error-reporting.
@@ -120,7 +135,9 @@ type Scanner struct {
 
 // NewScanner creates a new scanner for parsing the given input.
 func NewScanner(input string) *Scanner {
-	return &Scanner{Input: input}
+	s := &Scanner{Input: input}
+	setDefaultBuiltins(s)
+	return s
 }
 
 // SetFile sets the file path shown in this Scanner's error reports.
@@ -131,7 +148,8 @@ func (s *Scanner) SetFile(path string) {
 // Exec consumes tokens until Input is exhausted, returning the resulting
 // encoded maybe-DER.
 func (s *Scanner) Exec() ([]byte, error) {
-	return s.exec(nil)
+	enc, _, err := s.exec(nil)
+	return enc, err
 }
 
 // isEOF returns whether the cursor is at least n bytes ahead of the end of the
@@ -374,6 +392,15 @@ again:
 	case '}':
 		s.advance(1)
 		return token{Kind: tokenRightCurly, Pos: s.pos}, nil
+	case ',':
+		s.advance(1)
+		return token{Kind: tokenComma, Pos: s.pos}, nil
+	case '(':
+		s.advance(1)
+		return token{Kind: tokenLeftParen, Pos: s.pos}, nil
+	case ')':
+		s.advance(1)
+		return token{Kind: tokenRightParen, Pos: s.pos}, nil
 	case '"':
 		return s.parseQuotedString()
 	case 'u':
@@ -465,7 +492,7 @@ again:
 loop:
 	for !s.isEOF(0) {
 		switch s.Input[s.pos.Offset] {
-		case ' ', '\t', '\n', '\r', '{', '}', '[', ']', '`', '"', '#':
+		case ' ', '\t', '\n', '\r', ',', '(', ')', '{', '}', '[', ']', '`', '"', '#':
 			break loop
 		default:
 			s.advance(1)
@@ -530,33 +557,44 @@ loop:
 		return token{Kind: tokenLongForm, Length: l}, nil
 	}
 
-	return token{}, fmt.Errorf("unrecognized symbol %q", symbol)
+	return token{Kind: tokenWord, Value: []byte(symbol), Pos: s.pos}, nil
 }
 
 // exec is the main parser loop.
 //
-// The leftCurly argument, it not nil, represents the { that began the
-// length-prefixed block we're currently executing. Because we need to encode
-// the full extent of the contents of a {} before emitting the length prefix,
-// this function calls itself with a non-nil leftCurly to encode it.
-func (s *Scanner) exec(leftCurly *token) ([]byte, error) {
+// Because we need to consume all of the tokens between delimiters (e.g. for
+// computing the length of the contents of {} or counting arguments in ()), this
+// function needs to recurse into itself; the left parameter, when non-nil,
+// refers to the left delimiter that triggered the recursion.
+//
+// This function returns when: it sees an EOF; it sees a comma; it sees the
+// matching right-delimiter to left. It returns the encoded contents of the the
+// recognized tokens and all of the tokens that were recognized, including
+// the token that ended parsing.
+func (s *Scanner) exec(left *token) ([]byte, []token, error) {
 	var out []byte
+	var tokens []token
 	var lengthModifier *token
+	var word *token
 	for {
 		token, err := s.next()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		tokens = append(tokens, token)
 		if lengthModifier != nil && token.Kind != tokenLeftCurly {
-			return nil, &ParseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
+			return nil, nil, &ParseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
+		}
+		if word != nil && token.Kind != tokenLeftParen {
+			return nil, nil, &ParseError{word.Pos, fmt.Errorf("unrecognized symbol %q", string(token.Value))}
 		}
 		switch token.Kind {
 		case tokenBytes:
 			out = append(out, token.Value...)
 		case tokenLeftCurly:
-			child, err := s.exec(&token)
+			child, _, err := s.exec(&token)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			var lengthOverride int
 			if lengthModifier != nil {
@@ -574,24 +612,79 @@ func (s *Scanner) exec(leftCurly *token) ([]byte, error) {
 			out, err = appendLength(out, len(child), lengthOverride)
 			if err != nil {
 				// appendLength may fail if the lengthModifier was incompatible.
-				return nil, &ParseError{lengthModifier.Pos, err}
+				return nil, tokens, &ParseError{lengthModifier.Pos, err}
 			}
 			out = append(out, child...)
 			lengthModifier = nil
-		case tokenRightCurly:
-			if leftCurly != nil {
-				return out, nil
+		case tokenLeftParen:
+			if word == nil {
+				return nil, tokens, &ParseError{token.Pos, errors.New("missing function name")}
 			}
-			return nil, &ParseError{token.Pos, errors.New("unmatched '}'")}
+			var args [][]byte
+		argLoop:
+			for {
+				arg, prev, err := s.exec(&token)
+				if err != nil {
+					return nil, tokens, err
+				}
+				args = append(args, arg)
+				lastToken := prev[len(prev)-1]
+				switch lastToken.Kind {
+				case tokenComma:
+					if len(prev) < 2 {
+						return nil, nil, &ParseError{lastToken.Pos, errors.New("function arguments cannot be empty")}
+					}
+				case tokenRightParen:
+					if len(prev) < 2 {
+						// Actually foo(), so the argument list is nil.
+						args = nil
+					}
+					break argLoop
+				default:
+					return nil, nil, &ParseError{lastToken.Pos, errors.New("expected ',' or ')'")}
+				}
+			}
+			bytes, err := s.executeBuiltin(string(word.Value), args)
+			if err != nil {
+				return nil, nil, err
+			}
+			word = nil
+			out = append(out, bytes...)
+		case tokenRightCurly:
+			if left != nil && left.Kind == tokenLeftCurly {
+				return out, tokens, nil
+			}
+			return nil, nil, &ParseError{token.Pos, errors.New("unmatched '}'")}
+		case tokenRightParen:
+			if left != nil && left.Kind == tokenLeftParen {
+				return out, tokens, nil
+			}
+			return nil, nil, &ParseError{token.Pos, errors.New("unmatched '('")}
 		case tokenLongForm, tokenIndefinite:
 			lengthModifier = &token
+		case tokenComma:
+			return out, tokens, nil
+		case tokenWord:
+			word = &token
 		case tokenEOF:
-			if leftCurly == nil {
-				return out, nil
+			if left == nil {
+				return out, tokens, nil
+			} else if left.Kind == tokenLeftCurly {
+				return nil, nil, &ParseError{left.Pos, errors.New("unmatched '{'")}
+			} else {
+				return nil, nil, &ParseError{left.Pos, errors.New("unmatched '('")}
 			}
-			return nil, &ParseError{leftCurly.Pos, errors.New("unmatched '{'")}
 		default:
 			panic(token)
 		}
 	}
+}
+
+func (s *Scanner) executeBuiltin(name string, args [][]byte) ([]byte, error) {
+	builtin, ok := s.Builtins[name]
+	if !ok {
+		return nil, fmt.Errorf("unrecognized builtin %q", name)
+	}
+
+	return builtin(args)
 }

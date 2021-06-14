@@ -151,7 +151,7 @@ FALSE
 [PRIVATE 2]
 [UNIVERSAL 16] # This is a SEQUENCE.
 [UNIVERSAL 2 PRIMITIVE] # This is an INTEGER.
-[long-form:2 UNIVERSAL 2 PRIMTIVE] # This is `1f0002` instead of `02`.
+[long-form:2 UNIVERSAL 2 PRIMITIVE] # This is `1f0002` instead of `02`.
 
 # As a shorthand, one may write type names from ASN.1, replacing spaces with
 # underscore. These specify tag, number, and the constructed bit. The
@@ -236,7 +236,6 @@ INTEGER long-form:1 { 5 }
   INTEGER { `00ff` }
 }
 
-
 # Examples.
 
 # These primitives may be combined with raw byte strings to produce other
@@ -276,6 +275,35 @@ SEQUENCE `80`
 SEQUENCE `aabbcc`
   INTEGER { 1 }
   INTEGER { 2 }
+
+
+# DER ASCII provides a selection of builtin functions for building more
+# complex DER structures. Builtins are spelled builtin(arg1, arg2, ...), where
+# each argument is an arbitrary but non-empty sequence of DER ASCII tokens.
+# Tokens are fully expanded (but not emitted) before the builtin executes.
+# Builtin calls expand to a byte string just like any other token.
+#
+# There is explicitly no support for user-defined functions.
+#
+# The syntax and output of anything using builtins is subject to change, and
+# doesn't have the same stability expectations as the rest of DER ASCII.
+
+# define(var, value) defines a variable to the given value. The name of the
+# variable may be an arbitrary byte string. Variables may be redefined at any
+# point. define() always expands to an empty byte string.
+define("payload", SEQUENCE {
+  INTEGER { 1 }
+  OCTET_STRING { "hello, world" }
+})
+define(`ffff`, "payload")
+
+# var(var) expands to a variable previously defined with define(). The main use
+# of var() is to factor a complex structure that will be repeated many times,
+# such as complex issuer and subject fields in a self-signed X.509 cert.
+#
+# It is an error to access a var() that has not been previously defined.
+var("payload")
+var(var(`ffff`)) # Same as above, since var(`ffff`) expands to "payload".
 
 
 # Disassembler.
