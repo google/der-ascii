@@ -43,6 +43,10 @@ const (
 	tokenRightCurly
 	tokenIndefinite
 	tokenLongForm
+	tokenComma
+	tokenLeftParen
+	tokenRightParen
+	tokenWord
 	tokenEOF
 )
 
@@ -78,10 +82,11 @@ var (
 type scanner struct {
 	text string
 	pos  position
+	vars map[string][]byte
 }
 
 func newScanner(text string) *scanner {
-	return &scanner{text: text, pos: position{Line: 1}}
+	return &scanner{text: text, pos: position{Line: 1}, vars: make(map[string][]byte)}
 }
 
 func (s *scanner) parseEscapeSequence() (rune, error) {
@@ -274,6 +279,15 @@ again:
 	case '}':
 		s.advance()
 		return token{Kind: tokenRightCurly, Pos: s.pos}, nil
+	case ',':
+		s.advance()
+		return token{Kind: tokenComma, Pos: s.pos}, nil
+	case '(':
+		s.advance()
+		return token{Kind: tokenLeftParen, Pos: s.pos}, nil
+	case ')':
+		s.advance()
+		return token{Kind: tokenRightParen, Pos: s.pos}, nil
 	case '"':
 		return s.parseQuotedString()
 	case 'u':
@@ -366,7 +380,7 @@ again:
 loop:
 	for !s.isEOF() {
 		switch s.text[s.pos.Offset] {
-		case ' ', '\t', '\n', '\r', '{', '}', '[', ']', '`', '"', '#':
+		case ' ', '\t', '\n', '\r', ',', '(', ')', '{', '}', '[', ']', '`', '"', '#':
 			break loop
 		default:
 			s.advance()
@@ -431,7 +445,7 @@ loop:
 		return token{Kind: tokenLongForm, Length: l}, nil
 	}
 
-	return token{}, fmt.Errorf("unrecognized symbol %q", symbol)
+	return token{Kind: tokenWord, Value: []byte(symbol), Pos: s.pos}, nil
 }
 
 func (s *scanner) isEOF() bool {
@@ -469,24 +483,32 @@ func (s *scanner) consumeUpTo(b byte) (string, bool) {
 	return "", false
 }
 
-func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
+// asciiToDERImpl consumes tokens from |scanner| and returns the concatenation
+// of their byte values, as well as every token processed.
+func asciiToDERImpl(scanner *scanner, left *token) ([]byte, []token, error) {
 	var out []byte
+	var tokens []token
 	var lengthModifier *token
+	var word *token
 	for {
 		token, err := scanner.Next()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		tokens = append(tokens, token)
 		if lengthModifier != nil && token.Kind != tokenLeftCurly {
-			return nil, &parseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
+			return nil, nil, &parseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
+		}
+		if word != nil && token.Kind != tokenLeftParen {
+			return nil, nil, &parseError{word.Pos, fmt.Errorf("unrecognized symbol %q", string(token.Value))}
 		}
 		switch token.Kind {
 		case tokenBytes:
 			out = append(out, token.Value...)
 		case tokenLeftCurly:
-			child, err := asciiToDERImpl(scanner, &token)
+			child, _, err := asciiToDERImpl(scanner, &token)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			var lengthOverride int
 			if lengthModifier != nil {
@@ -504,22 +526,68 @@ func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 			out, err = appendLength(out, len(child), lengthOverride)
 			if err != nil {
 				// appendLength may fail if the lengthModifier was incompatible.
-				return nil, &parseError{lengthModifier.Pos, err}
+				return nil, tokens, &parseError{lengthModifier.Pos, err}
 			}
 			out = append(out, child...)
 			lengthModifier = nil
-		case tokenRightCurly:
-			if leftCurly != nil {
-				return out, nil
+		case tokenLeftParen:
+			if word == nil {
+				return nil, tokens, &parseError{token.Pos, errors.New("missing function name")}
 			}
-			return nil, &parseError{token.Pos, errors.New("unmatched '}'")}
+			var args [][]byte
+		argLoop:
+			for {
+				arg, prev, err := asciiToDERImpl(scanner, &token)
+				if err != nil {
+					return nil, tokens, err
+				}
+				args = append(args, arg)
+				lastToken := prev[len(prev)-1]
+				switch lastToken.Kind {
+				case tokenComma:
+					if len(prev) < 2 {
+						return nil, nil, &parseError{lastToken.Pos, errors.New("function arguments cannot be empty")}
+					}
+				case tokenRightParen:
+					if len(prev) < 2 {
+						// Actually foo(), so the argument list is nil.
+						args = nil
+					}
+					break argLoop
+				default:
+					return nil, nil, &parseError{lastToken.Pos, errors.New("expected ',' or ')'")}
+				}
+			}
+			bytes, err := executeBuiltin(scanner, string(word.Value), args)
+			if err != nil {
+				return nil, nil, err
+			}
+			word = nil
+			out = append(out, bytes...)
+		case tokenRightCurly:
+			if left != nil && left.Kind == tokenLeftCurly {
+				return out, tokens, nil
+			}
+			return nil, nil, &parseError{token.Pos, errors.New("unmatched '}'")}
+		case tokenRightParen:
+			if left != nil && left.Kind == tokenLeftParen {
+				return out, tokens, nil
+			}
+			return nil, nil, &parseError{token.Pos, errors.New("unmatched '('")}
 		case tokenLongForm, tokenIndefinite:
 			lengthModifier = &token
+		case tokenComma:
+			return out, tokens, nil
+		case tokenWord:
+			word = &token
 		case tokenEOF:
-			if leftCurly == nil {
-				return out, nil
+			if left == nil {
+				return out, tokens, nil
+			} else if left.Kind == tokenLeftCurly {
+				return nil, nil, &parseError{left.Pos, errors.New("unmatched '{'")}
+			} else {
+				return nil, nil, &parseError{left.Pos, errors.New("unmatched '('")}
 			}
-			return nil, &parseError{leftCurly.Pos, errors.New("unmatched '{'")}
 		default:
 			panic(token)
 		}
@@ -528,5 +596,6 @@ func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 
 func asciiToDER(input string) ([]byte, error) {
 	scanner := newScanner(input)
-	return asciiToDERImpl(scanner, nil)
+	bytes, _, err := asciiToDERImpl(scanner, nil)
+	return bytes, err
 }
