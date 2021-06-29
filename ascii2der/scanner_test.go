@@ -426,7 +426,7 @@ var asciiToDERTests = []struct {
 	{"1...2", nil, false},
 	{"true", nil, false},
 	{"false", nil, false},
-	// Mismatched curlies.
+	// Mismatched brackets.
 	{"{", nil, false},
 	{"}", nil, false},
 	{"(", nil, false},

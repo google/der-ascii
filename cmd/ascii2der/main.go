@@ -20,13 +20,71 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/google/der-ascii/ascii2der"
 )
 
+// pairs conforms to flag.Value. Each time Set() is called, it collects another
+// k=v pair into itself.
+type pairs map[string]string
+
+func (p pairs) String() string {
+	return ""
+}
+
+func (p pairs) Set(pair string) error {
+	if pair == "" || p == nil {
+		return nil
+	}
+
+	split := strings.SplitN(pair, "=", 2)
+	if len(split) != 2 {
+		return fmt.Errorf("missing \"=\": %q", pair)
+	}
+
+	p[split[0]] = split[1]
+	return nil
+}
+
+var defines = make(map[string]string)
+var fileDefines = make(map[string]string)
+
+func init() {
+	flag.Var(pairs(defines), "d",
+		`pair of the form a=b; define("a", "b") is inserted at the start of the input`+
+			"\nmay occur multiple times")
+	flag.Var(pairs(fileDefines), "df",
+		`like -d, except the second value is interpreted as a binary file to read`+
+			"\nmay occur multiple times")
+}
+
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
 var pemType = flag.String("pem", "", "if provided, format the output as a PEM block with this type")
+
+func readAll(path string) []byte {
+	var file *os.File
+	if path == "" {
+		file = os.Stdin
+	} else {
+		var err error
+		file, err = os.Open(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening %s: %s\n", path, err)
+			os.Exit(1)
+		}
+		defer file.Close()
+	}
+
+	buf, err := ioutil.ReadAll(file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading %s: %s\n", path, err)
+		os.Exit(1)
+	}
+
+	return buf
+}
 
 func main() {
 	flag.Parse()
@@ -37,25 +95,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	inFile := os.Stdin
-	if *inPath != "" {
-		var err error
-		inFile, err = os.Open(*inPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error opening %s: %s\n", *inPath, err)
-			os.Exit(1)
-		}
-		defer inFile.Close()
-	}
-
-	inBytes, err := ioutil.ReadAll(inFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading input: %s\n", err)
-		os.Exit(1)
-	}
-
+	inBytes := readAll(*inPath)
 	scanner := ascii2der.NewScanner(string(inBytes))
 	scanner.SetFile(*inPath)
+
+	scanner.Vars = make(map[string][]byte)
+	for k, v := range defines {
+		if _, ok := scanner.Vars[k]; ok {
+			fmt.Fprintf(os.Stderr, "Error: tried to define %q with flags twice\n", k)
+			os.Exit(1)
+		}
+		scanner.Vars[k] = []byte(v)
+	}
+	for k, v := range fileDefines {
+		if _, ok := scanner.Vars[k]; ok {
+			fmt.Fprintf(os.Stderr, "Error: tried to define %q with flags twice\n", k)
+			os.Exit(1)
+		}
+		scanner.Vars[k] = readAll(v)
+	}
 
 	outBytes, err := scanner.Exec()
 	if err != nil {
