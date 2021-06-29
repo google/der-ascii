@@ -426,7 +426,7 @@ var asciiToDERTests = []struct {
 	{"1...2", nil, false},
 	{"true", nil, false},
 	{"false", nil, false},
-	// Mismatched curlies.
+	// Mismatched brackets.
 	{"{", nil, false},
 	{"}", nil, false},
 	{"(", nil, false},
@@ -472,7 +472,7 @@ var asciiToDERTests = []struct {
 
 func TestASCIIToDER(t *testing.T) {
 	for i, tt := range asciiToDERTests {
-		out, err := asciiToDER(tt.in)
+		out, err := asciiToDER(tt.in, make(map[string][]byte))
 		ok := err == nil
 		if !tt.ok {
 			if ok {

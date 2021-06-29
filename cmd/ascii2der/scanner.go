@@ -594,8 +594,9 @@ func asciiToDERImpl(scanner *scanner, left *token) ([]byte, []token, error) {
 	}
 }
 
-func asciiToDER(input string) ([]byte, error) {
+func asciiToDER(input string, vars map[string][]byte) ([]byte, error) {
 	scanner := newScanner(input)
+	scanner.vars = vars
 	bytes, _, err := asciiToDERImpl(scanner, nil)
 	return bytes, err
 }
