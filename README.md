@@ -1,7 +1,5 @@
 # DER ASCII
 
-[![Build Status](https://travis-ci.org/google/der-ascii.svg?branch=master)](https://travis-ci.org/google/der-ascii)
-
 DER ASCII is a small human-editable language to emit DER
 ([Distinguished Encoding Rules](https://en.wikipedia.org/wiki/X.690#DER_encoding))
 or BER
