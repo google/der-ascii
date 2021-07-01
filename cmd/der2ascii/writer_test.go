@@ -128,25 +128,86 @@ var derToASCIITests = []convertFuncTest{
 		[]byte{0x03, 0x03, 0x00, 0x30, 0x00},
 		"BIT_STRING {\n  `00`\n  SEQUENCE {}\n}\n",
 	},
-	// BIT STRINGs are encoded normally if the contents are not an element.
+	// BIT STRINGs are encoded as bit string literals if the contents are not an
+	// element.
 	{
 		[]byte{0x03, 0x03, 0x00, 0x00, 0x00},
-		"BIT_STRING { `00` `0000` }\n",
+		"BIT_STRING { b`0000000000000000` }\n",
 	},
-	// BIT STRINGs are encoded normally if the leading byte is non-zero.
+	{
+		[]byte{0x03, 0x01, 0x00},
+		"BIT_STRING { b`` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x07, 0x100 - (1 << 7)},
+		"BIT_STRING { b`1` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x06, 0x100 - (1 << 6)},
+		"BIT_STRING { b`11` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x05, 0x100 - (1 << 5)},
+		"BIT_STRING { b`111` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x04, 0x100 - (1 << 4)},
+		"BIT_STRING { b`1111` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x03, 0x100 - (1 << 3)},
+		"BIT_STRING { b`11111` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x02, 0x100 - (1 << 2)},
+		"BIT_STRING { b`111111` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x01, 0x100 - (1 << 1)},
+		"BIT_STRING { b`1111111` }\n",
+	},
+	{
+		[]byte{0x03, 0x02, 0x00, 0xff},
+		"BIT_STRING { b`11111111` }\n",
+	},
+	{
+		[]byte{0x03, 0x03, 0x07, 0xff, 0x100 - (1 << 7)},
+		"BIT_STRING { b`111111111` }\n",
+	},
+	// The above, but with padding.
+	{
+		[]byte{0x03, 0x02, 0x07, 0xc0},
+		"BIT_STRING { b`1|1000000` }\n",
+	},
+	// BIT STRINGs are encoded as bit string literals if the they are at most 32
+	// bits.
 	{
 		[]byte{0x03, 0x05, 0x01, 0x30, 0x80, 0x00, 0x00},
-		"BIT_STRING { `01` `30800000` }\n",
+		"BIT_STRING { b`0011000010000000000000000000000` }\n",
+	},
+	// The above, but with non-trivial padding.
+	{
+		[]byte{0x03, 0x05, 0x01, 0x30, 0x80, 0x00, 0xff},
+		"BIT_STRING { b`0011000010000000000000001111111|1` }\n",
+	},
+	// BIT STRINGs with more than four components are hex-encoded instead.
+	{
+		[]byte{0x03, 0x06, 0x01, 0x30, 0x80, 0xaa, 0x55, 0xaa},
+		"BIT_STRING { `01` `3080aa55aa` }\n",
 	},
 	// BIT STRINGs do not attempt to separate the leading byte if invalid.
 	{
 		[]byte{0x03, 0x05, 0xff, 0x30, 0x80, 0x00, 0x00},
 		"BIT_STRING { `ff30800000` }\n",
 	},
-	// Empty BIT STRINGs do not emit extra whitspace.
+	// Empty BIT STRINGs with non-zero leading byte are always invalid.
 	{
-		[]byte{0x03, 0x01, 0x00},
-		"BIT_STRING { `00` }\n",
+		[]byte{0x03, 0x01, 0x07},
+		"BIT_STRING { `07` }\n",
+	},
+	{
+		[]byte{0x03, 0x01, 0x08},
+		"BIT_STRING { `08` }\n",
 	},
 	// OBJECT IDENTIFIERs are pretty-printed if possible.
 	{

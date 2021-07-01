@@ -284,6 +284,53 @@ again:
 		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '"' {
 			return s.parseUTF32String()
 		}
+	case 'b':
+		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '`' {
+			s.advance() // Skip the b.
+			s.advance() // Skip the `.
+			bitStr, ok := s.consumeUpTo('`')
+			if !ok {
+				return token{}, &parseError{s.pos, errors.New("unmatched `")}
+			}
+
+			// The leading byte is the number of "extra" bits at the end.
+			var bitCount int
+			var sawPipe bool
+			value := []byte{0}
+			for i, r := range bitStr {
+				switch r {
+				case '0', '1':
+					if bitCount%8 == 0 {
+						value = append(value, 0)
+					}
+					if r == '1' {
+						value[bitCount/8+1] |= 1 << uint(7-bitCount%8)
+					}
+					bitCount++
+				case '|':
+					if sawPipe {
+						return token{}, &parseError{s.pos, errors.New("duplicate |")}
+					}
+
+					// bitsRemaining is the number of bits remaining in the output that haven't
+					// been used yet. There cannot be more than that many bits past the |.
+					bitsRemaining := (len(value)-1)*8 - bitCount
+					inputRemaining := len(bitStr) - i - 1
+					if inputRemaining > bitsRemaining {
+						return token{}, &parseError{s.pos, fmt.Errorf("expected at most %v explicit padding bits; found %v", bitsRemaining, inputRemaining)}
+					}
+
+					sawPipe = true
+					value[0] = byte(bitsRemaining)
+				default:
+					return token{}, &parseError{s.pos, fmt.Errorf("unexpected rune %q", r)}
+				}
+			}
+			if !sawPipe {
+				value[0] = byte((len(value)-1)*8 - bitCount)
+			}
+			return token{Kind: tokenBytes, Value: value, Pos: s.pos}, nil
+		}
 	case '`':
 		s.advance()
 		hexStr, ok := s.consumeUpTo('`')
