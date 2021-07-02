@@ -305,6 +305,10 @@ define(`ffff`, "payload")
 var("payload")
 var(var(`ffff`)) # Same as above, since var(`ffff`) expands to "payload".
 
+# sign(algo, key, message) expands to a digital signature for message,
+# using the given algorithm string (e.g. "ECDSA_SHA256") and private key. The
+# supported key formats and algorithms can be found in
+# cmd/ascii2der/builtins.go.
 
 # Disassembler.
 
