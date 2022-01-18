@@ -11,7 +11,7 @@ structures and malformed variants of them.
 It provides two tools, `ascii2der` and `der2ascii`, to convert DER ASCII to a
 byte string and vice versa. To install them, run:
 
-    go get github.com/google/der-ascii/cmd/...
+    go install github.com/google/der-ascii/cmd/...@latest
 
 These tools may be used to create test inputs by taking an existing DER or BER
 structure, disassembling it with `der2ascii` into DER ASCII, making
