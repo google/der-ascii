@@ -387,9 +387,9 @@ loop:
 			}
 			oid = append(oid, uint32(u))
 		}
-		der, ok := appendObjectIdentifier(nil, oid)
-		if !ok {
-			return token{}, errors.New("invalid OID")
+		der, err := appendObjectIdentifier(nil, oid)
+		if err != nil {
+			return token{}, &ParseError{start, err}
 		}
 		return token{Kind: tokenBytes, Value: der, Pos: s.pos}, nil
 	}

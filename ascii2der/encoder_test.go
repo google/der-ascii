@@ -162,21 +162,21 @@ var appendObjectIdentifierTests = []struct {
 
 func TestAppendObjectIdentifier(t *testing.T) {
 	for i, tt := range appendObjectIdentifierTests {
-		dst, ok := appendObjectIdentifier(nil, tt.value)
+		dst, err := appendObjectIdentifier(nil, tt.value)
 		if !tt.ok {
-			if ok {
+			if err == nil {
 				t.Errorf("%d. appendObjectIdentifier(nil, %v) unexpectedly suceeded.", i, tt.value)
 			} else if len(dst) != 0 {
 				t.Errorf("%d. appendObjectIdentifier did not preserve input.", i)
 			}
 		} else if !bytes.Equal(dst, tt.encoded) {
-			t.Errorf("%d. appendObjectIdentifier(nil, %v) = %v, wanted %v.", i, tt.value, dst, tt.encoded)
+			t.Errorf("%d. appendObjectIdentifier(nil, %v) = %v, %v, wanted %v.", i, tt.value, dst, err, tt.encoded)
 		}
 
 		dst = []byte{0}
-		dst, ok = appendObjectIdentifier(dst, tt.value)
+		dst, err = appendObjectIdentifier(dst, tt.value)
 		if !tt.ok {
-			if ok {
+			if err == nil {
 				t.Errorf("%d. appendObjectIdentifier(nil, %v) unexpectedly suceeded.", i, tt.value)
 			} else if !bytes.Equal(dst, []byte{0}) {
 				t.Errorf("%d. appendObjectIdentifier did not preserve input.", i)
