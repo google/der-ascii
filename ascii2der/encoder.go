@@ -12,14 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ascii2der
 
 import (
 	"errors"
 	"fmt"
+	"unicode/utf16"
 
 	"github.com/google/der-ascii/internal"
 )
+
+func appendUTF16(dst []byte, r rune) []byte {
+	if r <= 0xffff {
+		// Note this logic intentionally tolerates unpaired surrogates.
+		return append(dst, byte(r>>8), byte(r))
+	}
+
+	r1, r2 := utf16.EncodeRune(r)
+	dst = append(dst, byte(r1>>8), byte(r1))
+	dst = append(dst, byte(r2>>8), byte(r2))
+	return dst
+}
+
+func appendUTF32(dst []byte, r rune) []byte {
+	return append(dst, byte(r>>24), byte(r>>16), byte(r>>8), byte(r))
+}
 
 func appendBase128(dst []byte, value uint32) []byte {
 	dst, err := appendBase128WithLength(dst, value, 0)

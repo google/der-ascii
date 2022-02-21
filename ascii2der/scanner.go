@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ascii2der
 
 import (
 	"encoding/hex"
@@ -21,14 +21,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/google/der-ascii/internal"
 )
 
-// A position describes a location in the input stream.
-type position struct {
+// A Position describes a location in the input stream.
+type Position struct {
 	Offset int // offset, starting at 0
 	Line   int // line number, starting at 1
 	Column int // column number, starting at 1 (byte count)
@@ -46,14 +45,14 @@ const (
 	tokenEOF
 )
 
-// A parseError is an error during parsing DER ASCII.
-type parseError struct {
-	Pos position
+// A ParseError is an error during parsing DER ASCII.
+type ParseError struct {
+	Pos Position
 	Err error
 }
 
-func (t *parseError) Error() string {
-	return fmt.Sprintf("line %d: %s", t.Pos.Line, t.Err)
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("line %d: %s", e.Pos.Line, e.Err)
 }
 
 // A token is a token in a DER ASCII file.
@@ -64,7 +63,7 @@ type token struct {
 	// bytes.
 	Value []byte
 	// Pos is the position of the first byte of the token.
-	Pos position
+	Pos Position
 	// Length, for a tokenLongForm token, is the number of bytes to use to
 	// encode the length, not including the initial one.
 	Length int
@@ -75,19 +74,19 @@ var (
 	regexpOID     = regexp.MustCompile(`^[0-9]+(\.[0-9]+)+$`)
 )
 
-type scanner struct {
+type Scanner struct {
 	text string
-	pos  position
+	pos  Position
 }
 
-func newScanner(text string) *scanner {
-	return &scanner{text: text, pos: position{Line: 1}}
+func NewScanner(text string) *Scanner {
+	return &Scanner{text: text, pos: Position{Line: 1}}
 }
 
-func (s *scanner) parseEscapeSequence() (rune, error) {
+func (s *Scanner) parseEscapeSequence() (rune, error) {
 	s.advance() // Skip the \. The caller is assumed to have validated it.
 	if s.isEOF() {
-		return 0, &parseError{s.pos, errors.New("expected escape character")}
+		return 0, &ParseError{s.pos, errors.New("expected escape character")}
 	}
 	switch c := s.text[s.pos.Offset]; c {
 	case 'n':
@@ -99,48 +98,48 @@ func (s *scanner) parseEscapeSequence() (rune, error) {
 	case 'x':
 		s.advance()
 		if s.pos.Offset+2 > len(s.text) {
-			return 0, &parseError{s.pos, errors.New("unfinished escape sequence")}
+			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
 		}
 		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+2])
 		if err != nil {
-			return 0, &parseError{s.pos, err}
+			return 0, &ParseError{s.pos, err}
 		}
 		s.advanceBytes(2)
 		return rune(b[0]), nil
 	case 'u':
 		s.advance()
 		if s.pos.Offset+4 > len(s.text) {
-			return 0, &parseError{s.pos, errors.New("unfinished escape sequence")}
+			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
 		}
 		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+4])
 		if err != nil {
-			return 0, &parseError{s.pos, err}
+			return 0, &ParseError{s.pos, err}
 		}
 		s.advanceBytes(4)
 		return rune(b[0])<<8 | rune(b[1]), nil
 	case 'U':
 		s.advance()
 		if s.pos.Offset+8 > len(s.text) {
-			return 0, &parseError{s.pos, errors.New("unfinished escape sequence")}
+			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
 		}
 		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+8])
 		if err != nil {
-			return 0, &parseError{s.pos, err}
+			return 0, &ParseError{s.pos, err}
 		}
 		s.advanceBytes(8)
 		return rune(b[0])<<24 | rune(b[1])<<16 | rune(b[2])<<8 | rune(b[3]), nil
 	default:
-		return 0, &parseError{s.pos, fmt.Errorf("unknown escape sequence \\%c", c)}
+		return 0, &ParseError{s.pos, fmt.Errorf("unknown escape sequence \\%c", c)}
 	}
 }
 
-func (s *scanner) parseQuotedString() (token, error) {
+func (s *Scanner) parseQuotedString() (token, error) {
 	s.advance() // Skip the ". The caller is assumed to have validated it.
 	start := s.pos
 	var bytes []byte
 	for {
 		if s.isEOF() {
-			return token{}, &parseError{start, errors.New("unmatched \"")}
+			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
 		switch c := s.text[s.pos.Offset]; c {
 		case '"':
@@ -154,7 +153,7 @@ func (s *scanner) parseQuotedString() (token, error) {
 			}
 			if r > 0xff {
 				// TODO(davidben): Alternatively, should these encode as UTF-8?
-				return token{}, &parseError{escapeStart, errors.New("illegal escape for quoted string")}
+				return token{}, &ParseError{escapeStart, errors.New("illegal escape for quoted string")}
 			}
 			bytes = append(bytes, byte(r))
 		default:
@@ -164,26 +163,14 @@ func (s *scanner) parseQuotedString() (token, error) {
 	}
 }
 
-func appendUTF16(b []byte, r rune) []byte {
-	if r <= 0xffff {
-		// Note this logic intentionally tolerates unpaired surrogates.
-		return append(b, byte(r>>8), byte(r))
-	}
-
-	r1, r2 := utf16.EncodeRune(r)
-	b = append(b, byte(r1>>8), byte(r1))
-	b = append(b, byte(r2>>8), byte(r2))
-	return b
-}
-
-func (s *scanner) parseUTF16String() (token, error) {
+func (s *Scanner) parseUTF16String() (token, error) {
 	s.advance() // Skip the u. The caller is assumed to have validated it.
 	s.advance() // Skip the ". The caller is assumed to have validated it.
 	start := s.pos
 	var bytes []byte
 	for {
 		if s.isEOF() {
-			return token{}, &parseError{start, errors.New("unmatched \"")}
+			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
 		switch c := s.text[s.pos.Offset]; c {
 		case '"':
@@ -201,7 +188,7 @@ func (s *scanner) parseUTF16String() (token, error) {
 			// legitimate replacement charaacter in the input. The documentation
 			// says errors return (RuneError, 0) or (RuneError, 1).
 			if r == utf8.RuneError && n <= 1 {
-				return token{}, &parseError{s.pos, errors.New("invalid UTF-8")}
+				return token{}, &ParseError{s.pos, errors.New("invalid UTF-8")}
 			}
 			s.advanceBytes(n)
 			bytes = appendUTF16(bytes, r)
@@ -209,18 +196,14 @@ func (s *scanner) parseUTF16String() (token, error) {
 	}
 }
 
-func appendUTF32(b []byte, r rune) []byte {
-	return append(b, byte(r>>24), byte(r>>16), byte(r>>8), byte(r))
-}
-
-func (s *scanner) parseUTF32String() (token, error) {
+func (s *Scanner) parseUTF32String() (token, error) {
 	s.advance() // Skip the U. The caller is assumed to have validated it.
 	s.advance() // Skip the ". The caller is assumed to have validated it.
 	start := s.pos
 	var bytes []byte
 	for {
 		if s.isEOF() {
-			return token{}, &parseError{start, errors.New("unmatched \"")}
+			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
 		switch c := s.text[s.pos.Offset]; c {
 		case '"':
@@ -238,7 +221,7 @@ func (s *scanner) parseUTF32String() (token, error) {
 			// legitimate replacement charaacter in the input. The documentation
 			// says errors return (RuneError, 0) or (RuneError, 1).
 			if r == utf8.RuneError && n <= 1 {
-				return token{}, &parseError{s.pos, errors.New("invalid UTF-8")}
+				return token{}, &ParseError{s.pos, errors.New("invalid UTF-8")}
 			}
 			s.advanceBytes(n)
 			bytes = appendUTF32(bytes, r)
@@ -246,7 +229,7 @@ func (s *scanner) parseUTF32String() (token, error) {
 	}
 }
 
-func (s *scanner) Next() (token, error) {
+func (s *Scanner) next() (token, error) {
 again:
 	if s.isEOF() {
 		return token{Kind: tokenEOF, Pos: s.pos}, nil
@@ -290,7 +273,7 @@ again:
 			s.advance() // Skip the `.
 			bitStr, ok := s.consumeUpTo('`')
 			if !ok {
-				return token{}, &parseError{s.pos, errors.New("unmatched `")}
+				return token{}, &ParseError{s.pos, errors.New("unmatched `")}
 			}
 
 			// The leading byte is the number of "extra" bits at the end.
@@ -309,7 +292,7 @@ again:
 					bitCount++
 				case '|':
 					if sawPipe {
-						return token{}, &parseError{s.pos, errors.New("duplicate |")}
+						return token{}, &ParseError{s.pos, errors.New("duplicate |")}
 					}
 
 					// bitsRemaining is the number of bits remaining in the output that haven't
@@ -317,13 +300,13 @@ again:
 					bitsRemaining := (len(value)-1)*8 - bitCount
 					inputRemaining := len(bitStr) - i - 1
 					if inputRemaining > bitsRemaining {
-						return token{}, &parseError{s.pos, fmt.Errorf("expected at most %v explicit padding bits; found %v", bitsRemaining, inputRemaining)}
+						return token{}, &ParseError{s.pos, fmt.Errorf("expected at most %v explicit padding bits; found %v", bitsRemaining, inputRemaining)}
 					}
 
 					sawPipe = true
 					value[0] = byte(bitsRemaining)
 				default:
-					return token{}, &parseError{s.pos, fmt.Errorf("unexpected rune %q", r)}
+					return token{}, &ParseError{s.pos, fmt.Errorf("unexpected rune %q", r)}
 				}
 			}
 			if !sawPipe {
@@ -335,26 +318,26 @@ again:
 		s.advance()
 		hexStr, ok := s.consumeUpTo('`')
 		if !ok {
-			return token{}, &parseError{s.pos, errors.New("unmatched `")}
+			return token{}, &ParseError{s.pos, errors.New("unmatched `")}
 		}
 		bytes, err := hex.DecodeString(hexStr)
 		if err != nil {
-			return token{}, &parseError{s.pos, err}
+			return token{}, &ParseError{s.pos, err}
 		}
 		return token{Kind: tokenBytes, Value: bytes, Pos: s.pos}, nil
 	case '[':
 		s.advance()
 		tagStr, ok := s.consumeUpTo(']')
 		if !ok {
-			return token{}, &parseError{s.pos, errors.New("unmatched [")}
+			return token{}, &ParseError{s.pos, errors.New("unmatched [")}
 		}
 		tag, err := decodeTagString(tagStr)
 		if err != nil {
-			return token{}, &parseError{s.pos, err}
+			return token{}, &ParseError{s.pos, err}
 		}
 		value, err := appendTag(nil, tag)
 		if err != nil {
-			return token{}, &parseError{s.pos, err}
+			return token{}, &ParseError{s.pos, err}
 		}
 		return token{Kind: tokenBytes, Value: value, Pos: s.pos}, nil
 	}
@@ -381,7 +364,7 @@ loop:
 		value, err := appendTag(nil, tag)
 		if err != nil {
 			// This is impossible; built-in tags always encode.
-			return token{}, &parseError{s.pos, err}
+			return token{}, &ParseError{s.pos, err}
 		}
 		return token{Kind: tokenBytes, Value: value, Pos: start}, nil
 	}
@@ -389,7 +372,7 @@ loop:
 	if regexpInteger.MatchString(symbol) {
 		value, err := strconv.ParseInt(symbol, 10, 64)
 		if err != nil {
-			return token{}, &parseError{start, err}
+			return token{}, &ParseError{start, err}
 		}
 		return token{Kind: tokenBytes, Value: appendInteger(nil, value), Pos: s.pos}, nil
 	}
@@ -400,7 +383,7 @@ loop:
 		for _, s := range oidStr {
 			u, err := strconv.ParseUint(s, 10, 32)
 			if err != nil {
-				return token{}, &parseError{start, err}
+				return token{}, &ParseError{start, err}
 			}
 			oid = append(oid, uint32(u))
 		}
@@ -426,7 +409,7 @@ loop:
 	if isLongFormOverride(symbol) {
 		l, err := decodeLongFormOverride(symbol)
 		if err != nil {
-			return token{}, &parseError{start, err}
+			return token{}, &ParseError{start, err}
 		}
 		return token{Kind: tokenLongForm, Length: l}, nil
 	}
@@ -434,11 +417,11 @@ loop:
 	return token{}, fmt.Errorf("unrecognized symbol %q", symbol)
 }
 
-func (s *scanner) isEOF() bool {
+func (s *Scanner) isEOF() bool {
 	return s.pos.Offset >= len(s.text)
 }
 
-func (s *scanner) advance() {
+func (s *Scanner) advance() {
 	if !s.isEOF() {
 		if s.text[s.pos.Offset] == '\n' {
 			s.pos.Line++
@@ -450,13 +433,13 @@ func (s *scanner) advance() {
 	}
 }
 
-func (s *scanner) advanceBytes(n int) {
+func (s *Scanner) advanceBytes(n int) {
 	for i := 0; i < n; i++ {
 		s.advance()
 	}
 }
 
-func (s *scanner) consumeUpTo(b byte) (string, bool) {
+func (s *Scanner) consumeUpTo(b byte) (string, bool) {
 	start := s.pos.Offset
 	for !s.isEOF() {
 		if s.text[s.pos.Offset] == b {
@@ -469,22 +452,22 @@ func (s *scanner) consumeUpTo(b byte) (string, bool) {
 	return "", false
 }
 
-func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
+func (s *Scanner) exec(leftCurly *token) ([]byte, error) {
 	var out []byte
 	var lengthModifier *token
 	for {
-		token, err := scanner.Next()
+		token, err := s.next()
 		if err != nil {
 			return nil, err
 		}
 		if lengthModifier != nil && token.Kind != tokenLeftCurly {
-			return nil, &parseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
+			return nil, &ParseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
 		}
 		switch token.Kind {
 		case tokenBytes:
 			out = append(out, token.Value...)
 		case tokenLeftCurly:
-			child, err := asciiToDERImpl(scanner, &token)
+			child, err := s.exec(&token)
 			if err != nil {
 				return nil, err
 			}
@@ -504,7 +487,7 @@ func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 			out, err = appendLength(out, len(child), lengthOverride)
 			if err != nil {
 				// appendLength may fail if the lengthModifier was incompatible.
-				return nil, &parseError{lengthModifier.Pos, err}
+				return nil, &ParseError{lengthModifier.Pos, err}
 			}
 			out = append(out, child...)
 			lengthModifier = nil
@@ -512,21 +495,20 @@ func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 			if leftCurly != nil {
 				return out, nil
 			}
-			return nil, &parseError{token.Pos, errors.New("unmatched '}'")}
+			return nil, &ParseError{token.Pos, errors.New("unmatched '}'")}
 		case tokenLongForm, tokenIndefinite:
 			lengthModifier = &token
 		case tokenEOF:
 			if leftCurly == nil {
 				return out, nil
 			}
-			return nil, &parseError{leftCurly.Pos, errors.New("unmatched '{'")}
+			return nil, &ParseError{leftCurly.Pos, errors.New("unmatched '{'")}
 		default:
 			panic(token)
 		}
 	}
 }
 
-func asciiToDER(input string) ([]byte, error) {
-	scanner := newScanner(input)
-	return asciiToDERImpl(scanner, nil)
+func (s *Scanner) Exec() ([]byte, error) {
+	return s.exec(nil)
 }
