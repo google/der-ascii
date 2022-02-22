@@ -24,7 +24,7 @@ import (
 
 // appendUTF16 marshals r using UTF-16 and appends the result to dst, returning
 // the updated slice.
-// 
+//
 // This logic intentionally tolerates unpaired surrogates.
 func appendUTF16(dst []byte, r rune) []byte {
 	if r <= 0xffff {
@@ -39,7 +39,7 @@ func appendUTF16(dst []byte, r rune) []byte {
 
 // appendUTF16 marshals r using UTF-32 and appends the result to dst, returning
 // the updated slice.
-// 
+//
 // In other words, this function writes r as an integer in big-endian order.
 func appendUTF32(dst []byte, r rune) []byte {
 	return append(dst, byte(r>>24), byte(r>>16), byte(r>>8), byte(r))
@@ -48,7 +48,7 @@ func appendUTF32(dst []byte, r rune) []byte {
 // appendBase128 marshals an integer in base 128, a varint format used by OIDs
 // and long-form tag numbers, and appends the result to dst, returning the
 // updated slice.
-// 
+//
 // This function is the same as appendBase128WithLength with length set to zero,
 // which cannot fail.
 func appendBase128(dst []byte, value uint32) []byte {
@@ -63,7 +63,7 @@ func appendBase128(dst []byte, value uint32) []byte {
 // appendBase128 marshals an integer in base 128, a varint format used by OIDs
 // and long-form tag numbers, and appends the result to dst, returning the
 // updated slice.
-// 
+//
 // If length is zero, the minimal length is chosen.
 func appendBase128WithLength(dst []byte, value uint32, length int) ([]byte, error) {
 	// Count how many bytes are needed.

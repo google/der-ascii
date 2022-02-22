@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// package ascii2der implements the DER-ASCII language described in
+// https://github.com/google/der-ascii/blob/master/language.txt.
+//
+// The Scanner type can be used to parse DER-ASCII files and output byte blobs
+// that may or may not be valid DER.
 package ascii2der
 
 import (
@@ -27,10 +32,22 @@ import (
 )
 
 // A Position describes a location in the input stream.
+//
+// The zero-value Position represents the first byte of an anonymous input file.
 type Position struct {
-	Offset int // offset, starting at 0
-	Line   int // line number, starting at 1
-	Column int // column number, starting at 1 (byte count)
+	Offset int    // Byte offset.
+	Line   int    // Line number (zero-indexed).
+	Column int    // Column number (zero-indexed byte, not rune, count).
+	File   string // Optional file name for pretty-printing.
+}
+
+// String converts a Position to a string.
+func (p Position) String() string {
+	file := p.File
+	if file == "" {
+		file = "<input>"
+	}
+	return fmt.Sprintf("%s:%d:%d", file, p.Line+1, p.Column+1)
 }
 
 // A tokenKind is a kind of token.
@@ -45,14 +62,26 @@ const (
 	tokenEOF
 )
 
-// A ParseError is an error during parsing DER ASCII.
+// A ParseError may be produced while executing a DER ASCII file, wrapping
+// another error along with a position.
+//
+// Errors produced by functions in this package my by type-asserted to
+// ParseError to try and obtain the position at which the error occurred.
 type ParseError struct {
 	Pos Position
 	Err error
 }
 
+// Error makes this type into an error type.
 func (e *ParseError) Error() string {
-	return fmt.Sprintf("line %d: %s", e.Pos.Line, e.Err)
+	return fmt.Sprintf("%s: %s", e.Pos, e.Err)
+}
+
+// Unwrap extracts the inner wrapped error.
+//
+// See errors.Unwrap().
+func (e *ParseError) Unwrap() error {
+	return e.Err
 }
 
 // A token is a token in a DER ASCII file.
@@ -74,21 +103,96 @@ var (
 	regexpOID     = regexp.MustCompile(`^[0-9]+(\.[0-9]+)+$`)
 )
 
+// A Scanner represents parsing state for a DER ASCII file.
+//
+// A zero-value Scanner is ready to begin parsing (given that Input is set to
+// a valid value). However, it is recommended to use NewScanner to create a new
+// Scanner, since it can pre-populate fields other than Input with default
+// settings.
 type Scanner struct {
-	text string
-	pos  Position
+	// Input is the input text being processed.
+	Input string
+	// Position is the current position at which parsing should
+	// resume. The Offset field is used for indexing into Input; the remaining
+	// fields are used for error-reporting.
+	pos Position
 }
 
-func NewScanner(text string) *Scanner {
-	return &Scanner{text: text, pos: Position{Line: 1}}
+// NewScanner creates a new scanner for parsing the given input.
+func NewScanner(input string) *Scanner {
+	return &Scanner{Input: input}
 }
 
+// SetFile sets the file path shown in this Scanner's error reports.
+func (s *Scanner) SetFile(path string) {
+	s.pos.File = path
+}
+
+// Exec consumes tokens until Input is exhausted, returning the resulting
+// encoded maybe-DER.
+func (s *Scanner) Exec() ([]byte, error) {
+	return s.exec(nil)
+}
+
+// isEOF returns whether the cursor is past the end of the input string.
+func (s *Scanner) isEOF() bool {
+	return s.pos.Offset >= len(s.Input)
+}
+
+// advance advances the scanner's cursor one position.
+//
+// Unlike just s.pos.Offset++, this will not proceed beyond the end of the
+// string, and will update the line and column information accordingly.
+func (s *Scanner) advance() {
+	if !s.isEOF() {
+		if s.Input[s.pos.Offset] == '\n' {
+			s.pos.Line++
+			s.pos.Column = 0
+		} else {
+			s.pos.Column++
+		}
+		s.pos.Offset++
+	}
+}
+
+// advanceBytes calls advance() n times.
+func (s *Scanner) advanceBytes(n int) {
+	for i := 0; i < n; i++ {
+		s.advance()
+	}
+}
+
+// consumeUpTo advances the cursor until the given byte is seen, returning all
+// source bytes between the initial cursor position and excluding the given
+// byte.
+//
+// If EOF is reached before the byte is seen, the function returns false.
+func (s *Scanner) consumeUpTo(b byte) (string, bool) {
+	start := s.pos.Offset
+	for !s.isEOF() {
+		if s.Input[s.pos.Offset] == b {
+			ret := s.Input[start:s.pos.Offset]
+			s.advance()
+			return ret, true
+		}
+		s.advance()
+	}
+	return "", false
+}
+
+// parseEscapeSequence parses a DER-ASCII escape sequence, returning the rune
+// it escapes.
+//
+// Valid escapes are:
+// \n \" \\ \xNN \uNNNN \UNNNNNNNN
+//
+// This function assumes that the scanner's cursor is currently on a \ rune.
 func (s *Scanner) parseEscapeSequence() (rune, error) {
 	s.advance() // Skip the \. The caller is assumed to have validated it.
 	if s.isEOF() {
 		return 0, &ParseError{s.pos, errors.New("expected escape character")}
 	}
-	switch c := s.text[s.pos.Offset]; c {
+	switch c := s.Input[s.pos.Offset]; c {
 	case 'n':
 		s.advance()
 		return '\n', nil
@@ -97,10 +201,10 @@ func (s *Scanner) parseEscapeSequence() (rune, error) {
 		return rune(c), nil
 	case 'x':
 		s.advance()
-		if s.pos.Offset+2 > len(s.text) {
+		if s.pos.Offset+2 > len(s.Input) {
 			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
 		}
-		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+2])
+		b, err := hex.DecodeString(s.Input[s.pos.Offset : s.pos.Offset+2])
 		if err != nil {
 			return 0, &ParseError{s.pos, err}
 		}
@@ -108,10 +212,10 @@ func (s *Scanner) parseEscapeSequence() (rune, error) {
 		return rune(b[0]), nil
 	case 'u':
 		s.advance()
-		if s.pos.Offset+4 > len(s.text) {
+		if s.pos.Offset+4 > len(s.Input) {
 			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
 		}
-		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+4])
+		b, err := hex.DecodeString(s.Input[s.pos.Offset : s.pos.Offset+4])
 		if err != nil {
 			return 0, &ParseError{s.pos, err}
 		}
@@ -119,10 +223,10 @@ func (s *Scanner) parseEscapeSequence() (rune, error) {
 		return rune(b[0])<<8 | rune(b[1]), nil
 	case 'U':
 		s.advance()
-		if s.pos.Offset+8 > len(s.text) {
+		if s.pos.Offset+8 > len(s.Input) {
 			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
 		}
-		b, err := hex.DecodeString(s.text[s.pos.Offset : s.pos.Offset+8])
+		b, err := hex.DecodeString(s.Input[s.pos.Offset : s.pos.Offset+8])
 		if err != nil {
 			return 0, &ParseError{s.pos, err}
 		}
@@ -133,6 +237,9 @@ func (s *Scanner) parseEscapeSequence() (rune, error) {
 	}
 }
 
+// parseQuotedString parses a UTF-8 string until the next ".
+//
+// This function assumes that the scanner's cursor is currently on a " rune.
 func (s *Scanner) parseQuotedString() (token, error) {
 	s.advance() // Skip the ". The caller is assumed to have validated it.
 	start := s.pos
@@ -141,7 +248,7 @@ func (s *Scanner) parseQuotedString() (token, error) {
 		if s.isEOF() {
 			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
-		switch c := s.text[s.pos.Offset]; c {
+		switch c := s.Input[s.pos.Offset]; c {
 		case '"':
 			s.advance()
 			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
@@ -163,6 +270,10 @@ func (s *Scanner) parseQuotedString() (token, error) {
 	}
 }
 
+// parseUTF16String parses a UTF-16 string until the next ".
+//
+// This function assumes that the scanner's cursor is currently on a u followed
+// by a " rune.
 func (s *Scanner) parseUTF16String() (token, error) {
 	s.advance() // Skip the u. The caller is assumed to have validated it.
 	s.advance() // Skip the ". The caller is assumed to have validated it.
@@ -172,7 +283,7 @@ func (s *Scanner) parseUTF16String() (token, error) {
 		if s.isEOF() {
 			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
-		switch c := s.text[s.pos.Offset]; c {
+		switch c := s.Input[s.pos.Offset]; c {
 		case '"':
 			s.advance()
 			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
@@ -183,9 +294,9 @@ func (s *Scanner) parseUTF16String() (token, error) {
 			}
 			bytes = appendUTF16(bytes, r)
 		default:
-			r, n := utf8.DecodeRuneInString(s.text[s.pos.Offset:])
+			r, n := utf8.DecodeRuneInString(s.Input[s.pos.Offset:])
 			// Note DecodeRuneInString may return utf8.RuneError if there is a
-			// legitimate replacement charaacter in the input. The documentation
+			// legitimate replacement character in the input. The documentation
 			// says errors return (RuneError, 0) or (RuneError, 1).
 			if r == utf8.RuneError && n <= 1 {
 				return token{}, &ParseError{s.pos, errors.New("invalid UTF-8")}
@@ -196,6 +307,10 @@ func (s *Scanner) parseUTF16String() (token, error) {
 	}
 }
 
+// parseUTF32String parses a UTF-32 string until the next ".
+//
+// This function assumes that the scanner's cursor is currently on a U followed
+// by a " rune.
 func (s *Scanner) parseUTF32String() (token, error) {
 	s.advance() // Skip the U. The caller is assumed to have validated it.
 	s.advance() // Skip the ". The caller is assumed to have validated it.
@@ -205,7 +320,7 @@ func (s *Scanner) parseUTF32String() (token, error) {
 		if s.isEOF() {
 			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
-		switch c := s.text[s.pos.Offset]; c {
+		switch c := s.Input[s.pos.Offset]; c {
 		case '"':
 			s.advance()
 			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
@@ -216,7 +331,7 @@ func (s *Scanner) parseUTF32String() (token, error) {
 			}
 			bytes = appendUTF32(bytes, r)
 		default:
-			r, n := utf8.DecodeRuneInString(s.text[s.pos.Offset:])
+			r, n := utf8.DecodeRuneInString(s.Input[s.pos.Offset:])
 			// Note DecodeRuneInString may return utf8.RuneError if there is a
 			// legitimate replacement charaacter in the input. The documentation
 			// says errors return (RuneError, 0) or (RuneError, 1).
@@ -229,13 +344,14 @@ func (s *Scanner) parseUTF32String() (token, error) {
 	}
 }
 
+// next lexes the next token.
 func (s *Scanner) next() (token, error) {
 again:
 	if s.isEOF() {
 		return token{Kind: tokenEOF, Pos: s.pos}, nil
 	}
 
-	switch s.text[s.pos.Offset] {
+	switch s.Input[s.pos.Offset] {
 	case ' ', '\t', '\n', '\r':
 		// Skip whitespace.
 		s.advance()
@@ -244,7 +360,7 @@ again:
 		// Skip to the end of the comment.
 		s.advance()
 		for !s.isEOF() {
-			wasNewline := s.text[s.pos.Offset] == '\n'
+			wasNewline := s.Input[s.pos.Offset] == '\n'
 			s.advance()
 			if wasNewline {
 				break
@@ -260,15 +376,15 @@ again:
 	case '"':
 		return s.parseQuotedString()
 	case 'u':
-		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '"' {
+		if s.pos.Offset+1 < len(s.Input) && s.Input[s.pos.Offset+1] == '"' {
 			return s.parseUTF16String()
 		}
 	case 'U':
-		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '"' {
+		if s.pos.Offset+1 < len(s.Input) && s.Input[s.pos.Offset+1] == '"' {
 			return s.parseUTF32String()
 		}
 	case 'b':
-		if s.pos.Offset+1 < len(s.text) && s.text[s.pos.Offset+1] == '`' {
+		if s.pos.Offset+1 < len(s.Input) && s.Input[s.pos.Offset+1] == '`' {
 			s.advance() // Skip the b.
 			s.advance() // Skip the `.
 			bitStr, ok := s.consumeUpTo('`')
@@ -348,7 +464,7 @@ again:
 	s.advance()
 loop:
 	for !s.isEOF() {
-		switch s.text[s.pos.Offset] {
+		switch s.Input[s.pos.Offset] {
 		case ' ', '\t', '\n', '\r', '{', '}', '[', ']', '`', '"', '#':
 			break loop
 		default:
@@ -356,7 +472,7 @@ loop:
 		}
 	}
 
-	symbol := s.text[start.Offset:s.pos.Offset]
+	symbol := s.Input[start.Offset:s.pos.Offset]
 
 	// See if it is a tag.
 	tag, ok := internal.TagByName(symbol)
@@ -417,41 +533,12 @@ loop:
 	return token{}, fmt.Errorf("unrecognized symbol %q", symbol)
 }
 
-func (s *Scanner) isEOF() bool {
-	return s.pos.Offset >= len(s.text)
-}
-
-func (s *Scanner) advance() {
-	if !s.isEOF() {
-		if s.text[s.pos.Offset] == '\n' {
-			s.pos.Line++
-			s.pos.Column = 0
-		} else {
-			s.pos.Column++
-		}
-		s.pos.Offset++
-	}
-}
-
-func (s *Scanner) advanceBytes(n int) {
-	for i := 0; i < n; i++ {
-		s.advance()
-	}
-}
-
-func (s *Scanner) consumeUpTo(b byte) (string, bool) {
-	start := s.pos.Offset
-	for !s.isEOF() {
-		if s.text[s.pos.Offset] == b {
-			ret := s.text[start:s.pos.Offset]
-			s.advance()
-			return ret, true
-		}
-		s.advance()
-	}
-	return "", false
-}
-
+// exec is the main parser loop.
+//
+// The leftCurly argument, it not nil, represents the { that began the
+// length-prefixed block we're currently executing. Because we need to encode
+// the full extent of the contents of a {} before emitting the length prefix,
+// this function calls itself with a non-nil leftCurly to encode it.
 func (s *Scanner) exec(leftCurly *token) ([]byte, error) {
 	var out []byte
 	var lengthModifier *token
@@ -507,8 +594,4 @@ func (s *Scanner) exec(leftCurly *token) ([]byte, error) {
 			panic(token)
 		}
 	}
-}
-
-func (s *Scanner) Exec() ([]byte, error) {
-	return s.exec(nil)
 }
