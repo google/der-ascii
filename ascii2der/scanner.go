@@ -134,17 +134,18 @@ func (s *Scanner) Exec() ([]byte, error) {
 	return s.exec(nil)
 }
 
-// isEOF returns whether the cursor is past the end of the input string.
-func (s *Scanner) isEOF() bool {
-	return s.pos.Offset >= len(s.Input)
+// isEOF returns whether the cursor is at least n bytes ahead of the end of the
+// input.
+func (s *Scanner) isEOF(n int) bool {
+	return s.pos.Offset+n >= len(s.Input)
 }
 
-// advance advances the scanner's cursor one position.
+// advance advances the scanner's cursor n positions.
 //
-// Unlike just s.pos.Offset++, this will not proceed beyond the end of the
+// Unlike just s.pos.Offset += n, this will not proceed beyond the end of the
 // string, and will update the line and column information accordingly.
-func (s *Scanner) advance() {
-	if !s.isEOF() {
+func (s *Scanner) advance(n int) {
+	for i := 0; i < n && !s.isEOF(0); i++ {
 		if s.Input[s.pos.Offset] == '\n' {
 			s.pos.Line++
 			s.pos.Column = 0
@@ -155,27 +156,30 @@ func (s *Scanner) advance() {
 	}
 }
 
-// advanceBytes calls advance() n times.
-func (s *Scanner) advanceBytes(n int) {
-	for i := 0; i < n; i++ {
-		s.advance()
+// consume advances exactly n times and returns all source bytes between the
+// initial cursor position and excluding the final cursor position.
+//
+// If EOF is reached before all n bytes are consumed, the function returns
+// false.
+func (s *Scanner) consume(n int) (string, bool) {
+	start := s.pos.Offset
+	s.advance(n)
+	if s.pos.Offset-start != n {
+		return "", false
 	}
+
+	return s.Input[start:s.pos.Offset], true
 }
 
-// consumeUpTo advances the cursor until the given byte is seen, returning all
+// consumeUntil advances the cursor until the given byte is seen, returning all
 // source bytes between the initial cursor position and excluding the given
-// byte.
+// byte. This function will advance past the searched-for byte.
 //
 // If EOF is reached before the byte is seen, the function returns false.
-func (s *Scanner) consumeUpTo(b byte) (string, bool) {
-	start := s.pos.Offset
-	for !s.isEOF() {
-		if s.Input[s.pos.Offset] == b {
-			ret := s.Input[start:s.pos.Offset]
-			s.advance()
-			return ret, true
-		}
-		s.advance()
+func (s *Scanner) consumeUntil(b byte) (string, bool) {
+	if i := strings.IndexByte(s.Input[s.pos.Offset:], b); i != -1 {
+		text, _ := s.consume(i + 1)
+		return text[:i], true
 	}
 	return "", false
 }
@@ -188,50 +192,47 @@ func (s *Scanner) consumeUpTo(b byte) (string, bool) {
 //
 // This function assumes that the scanner's cursor is currently on a \ rune.
 func (s *Scanner) parseEscapeSequence() (rune, error) {
-	s.advance() // Skip the \. The caller is assumed to have validated it.
-	if s.isEOF() {
+	s.advance(1) // Skip the \. The caller is assumed to have validated it.
+	if s.isEOF(0) {
 		return 0, &ParseError{s.pos, errors.New("expected escape character")}
 	}
+
 	switch c := s.Input[s.pos.Offset]; c {
 	case 'n':
-		s.advance()
+		s.advance(1)
 		return '\n', nil
 	case '"', '\\':
-		s.advance()
+		s.advance(1)
 		return rune(c), nil
-	case 'x':
-		s.advance()
-		if s.pos.Offset+2 > len(s.Input) {
+	case 'x', 'u', 'U':
+		s.advance(1)
+
+		var digits int
+		switch c {
+		case 'x':
+			digits = 2
+		case 'u':
+			digits = 4
+		case 'U':
+			digits = 8
+		}
+
+		hexes, ok := s.consume(digits)
+		if !ok {
 			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
 		}
-		b, err := hex.DecodeString(s.Input[s.pos.Offset : s.pos.Offset+2])
+
+		bytes, err := hex.DecodeString(hexes)
 		if err != nil {
 			return 0, &ParseError{s.pos, err}
 		}
-		s.advanceBytes(2)
-		return rune(b[0]), nil
-	case 'u':
-		s.advance()
-		if s.pos.Offset+4 > len(s.Input) {
-			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
+
+		var r rune
+		for _, b := range bytes {
+			r <<= 8
+			r |= rune(b)
 		}
-		b, err := hex.DecodeString(s.Input[s.pos.Offset : s.pos.Offset+4])
-		if err != nil {
-			return 0, &ParseError{s.pos, err}
-		}
-		s.advanceBytes(4)
-		return rune(b[0])<<8 | rune(b[1]), nil
-	case 'U':
-		s.advance()
-		if s.pos.Offset+8 > len(s.Input) {
-			return 0, &ParseError{s.pos, errors.New("unfinished escape sequence")}
-		}
-		b, err := hex.DecodeString(s.Input[s.pos.Offset : s.pos.Offset+8])
-		if err != nil {
-			return 0, &ParseError{s.pos, err}
-		}
-		s.advanceBytes(8)
-		return rune(b[0])<<24 | rune(b[1])<<16 | rune(b[2])<<8 | rune(b[3]), nil
+		return r, nil
 	default:
 		return 0, &ParseError{s.pos, fmt.Errorf("unknown escape sequence \\%c", c)}
 	}
@@ -241,16 +242,16 @@ func (s *Scanner) parseEscapeSequence() (rune, error) {
 //
 // This function assumes that the scanner's cursor is currently on a " rune.
 func (s *Scanner) parseQuotedString() (token, error) {
-	s.advance() // Skip the ". The caller is assumed to have validated it.
+	s.advance(1) // Skip the ". The caller is assumed to have validated it.
 	start := s.pos
 	var bytes []byte
 	for {
-		if s.isEOF() {
+		if s.isEOF(0) {
 			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
 		switch c := s.Input[s.pos.Offset]; c {
 		case '"':
-			s.advance()
+			s.advance(1)
 			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
 		case '\\':
 			escapeStart := s.pos
@@ -264,7 +265,7 @@ func (s *Scanner) parseQuotedString() (token, error) {
 			}
 			bytes = append(bytes, byte(r))
 		default:
-			s.advance()
+			s.advance(1)
 			bytes = append(bytes, c)
 		}
 	}
@@ -275,17 +276,17 @@ func (s *Scanner) parseQuotedString() (token, error) {
 // This function assumes that the scanner's cursor is currently on a u followed
 // by a " rune.
 func (s *Scanner) parseUTF16String() (token, error) {
-	s.advance() // Skip the u. The caller is assumed to have validated it.
-	s.advance() // Skip the ". The caller is assumed to have validated it.
+	s.advance(2) // Skip the u". The caller is assumed to have validated it.
 	start := s.pos
 	var bytes []byte
 	for {
-		if s.isEOF() {
+		if s.isEOF(0) {
 			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
-		switch c := s.Input[s.pos.Offset]; c {
+
+		switch s.Input[s.pos.Offset] {
 		case '"':
-			s.advance()
+			s.advance(1)
 			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
 		case '\\':
 			r, err := s.parseEscapeSequence()
@@ -301,7 +302,7 @@ func (s *Scanner) parseUTF16String() (token, error) {
 			if r == utf8.RuneError && n <= 1 {
 				return token{}, &ParseError{s.pos, errors.New("invalid UTF-8")}
 			}
-			s.advanceBytes(n)
+			s.advance(n)
 			bytes = appendUTF16(bytes, r)
 		}
 	}
@@ -312,17 +313,17 @@ func (s *Scanner) parseUTF16String() (token, error) {
 // This function assumes that the scanner's cursor is currently on a U followed
 // by a " rune.
 func (s *Scanner) parseUTF32String() (token, error) {
-	s.advance() // Skip the U. The caller is assumed to have validated it.
-	s.advance() // Skip the ". The caller is assumed to have validated it.
+	s.advance(2) // Skip the U". The caller is assumed to have validated it.
 	start := s.pos
 	var bytes []byte
 	for {
-		if s.isEOF() {
+		if s.isEOF(0) {
 			return token{}, &ParseError{start, errors.New("unmatched \"")}
 		}
-		switch c := s.Input[s.pos.Offset]; c {
+
+		switch s.Input[s.pos.Offset] {
 		case '"':
-			s.advance()
+			s.advance(1)
 			return token{Kind: tokenBytes, Value: bytes, Pos: start}, nil
 		case '\\':
 			r, err := s.parseEscapeSequence()
@@ -338,7 +339,7 @@ func (s *Scanner) parseUTF32String() (token, error) {
 			if r == utf8.RuneError && n <= 1 {
 				return token{}, &ParseError{s.pos, errors.New("invalid UTF-8")}
 			}
-			s.advanceBytes(n)
+			s.advance(n)
 			bytes = appendUTF32(bytes, r)
 		}
 	}
@@ -347,47 +348,46 @@ func (s *Scanner) parseUTF32String() (token, error) {
 // next lexes the next token.
 func (s *Scanner) next() (token, error) {
 again:
-	if s.isEOF() {
+	if s.isEOF(0) {
 		return token{Kind: tokenEOF, Pos: s.pos}, nil
 	}
 
 	switch s.Input[s.pos.Offset] {
 	case ' ', '\t', '\n', '\r':
 		// Skip whitespace.
-		s.advance()
+		s.advance(1)
 		goto again
 	case '#':
 		// Skip to the end of the comment.
-		s.advance()
-		for !s.isEOF() {
+		s.advance(1)
+		for !s.isEOF(0) {
 			wasNewline := s.Input[s.pos.Offset] == '\n'
-			s.advance()
+			s.advance(1)
 			if wasNewline {
 				break
 			}
 		}
 		goto again
 	case '{':
-		s.advance()
+		s.advance(1)
 		return token{Kind: tokenLeftCurly, Pos: s.pos}, nil
 	case '}':
-		s.advance()
+		s.advance(1)
 		return token{Kind: tokenRightCurly, Pos: s.pos}, nil
 	case '"':
 		return s.parseQuotedString()
 	case 'u':
-		if s.pos.Offset+1 < len(s.Input) && s.Input[s.pos.Offset+1] == '"' {
+		if !s.isEOF(1) && s.Input[s.pos.Offset+1] == '"' {
 			return s.parseUTF16String()
 		}
 	case 'U':
-		if s.pos.Offset+1 < len(s.Input) && s.Input[s.pos.Offset+1] == '"' {
+		if !s.isEOF(1) && s.Input[s.pos.Offset+1] == '"' {
 			return s.parseUTF32String()
 		}
 	case 'b':
-		if s.pos.Offset+1 < len(s.Input) && s.Input[s.pos.Offset+1] == '`' {
-			s.advance() // Skip the b.
-			s.advance() // Skip the `.
-			bitStr, ok := s.consumeUpTo('`')
+		if !s.isEOF(1) && s.Input[s.pos.Offset+1] == '`' {
+			s.advance(2) // Skip the b`.
+			bitStr, ok := s.consumeUntil('`')
 			if !ok {
 				return token{}, &ParseError{s.pos, errors.New("unmatched `")}
 			}
@@ -431,8 +431,8 @@ again:
 			return token{Kind: tokenBytes, Value: value, Pos: s.pos}, nil
 		}
 	case '`':
-		s.advance()
-		hexStr, ok := s.consumeUpTo('`')
+		s.advance(1)
+		hexStr, ok := s.consumeUntil('`')
 		if !ok {
 			return token{}, &ParseError{s.pos, errors.New("unmatched `")}
 		}
@@ -442,8 +442,8 @@ again:
 		}
 		return token{Kind: tokenBytes, Value: bytes, Pos: s.pos}, nil
 	case '[':
-		s.advance()
-		tagStr, ok := s.consumeUpTo(']')
+		s.advance(1)
+		tagStr, ok := s.consumeUntil(']')
 		if !ok {
 			return token{}, &ParseError{s.pos, errors.New("unmatched [")}
 		}
@@ -461,14 +461,14 @@ again:
 	// Normal token. Consume up to the next whitespace character, symbol, or
 	// EOF.
 	start := s.pos
-	s.advance()
+	s.advance(1)
 loop:
-	for !s.isEOF() {
+	for !s.isEOF(0) {
 		switch s.Input[s.pos.Offset] {
 		case ' ', '\t', '\n', '\r', '{', '}', '[', ']', '`', '"', '#':
 			break loop
 		default:
-			s.advance()
+			s.advance(1)
 		}
 	}
 
