@@ -54,7 +54,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	outBytes, err := ascii2der.NewScanner(string(inBytes)).Exec()
+	scanner := ascii2der.NewScanner(string(inBytes))
+	scanner.SetFile(*inPath)
+
+	outBytes, err := scanner.Exec()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Syntax error: %s\n", err)
 		os.Exit(1)
