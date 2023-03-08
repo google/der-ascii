@@ -27,8 +27,14 @@ import (
 
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
-var isPem = flag.Bool("pem", false, "treat the input as a PEM file")
+var isPEM = flag.Bool("pem", false, "treat the input as PEM and decode the first PEM block")
+var isPEMAll = flag.Bool("pem-all", false, "treat the input as PEM and decode all PEM blocks")
 var isHex = flag.Bool("hex", false, "treat the input as hex, ignoring punctuation and whitespace")
+
+type input struct {
+	comment string
+	bytes   []byte
+}
 
 func main() {
 	flag.Parse()
@@ -56,13 +62,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *isPem {
-		pemBlock, _ := pem.Decode(inBytes)
-		if pemBlock == nil {
-			fmt.Fprintf(os.Stderr, "-pem provided, but input could not be parsed as a PEM\n")
+	var inputs []input
+	if *isPEMAll {
+		for len(inBytes) > 0 {
+			var pemBlock *pem.Block
+			pemBlock, inBytes = pem.Decode(inBytes)
+			if pemBlock == nil {
+				break
+			}
+			inputs = append(inputs, input{comment: pemBlock.Type, bytes: pemBlock.Bytes})
+		}
+		if len(inputs) == 0 {
+			fmt.Fprintf(os.Stderr, "-pem-all provided, but input could not be parsed as PEM\n")
 			os.Exit(1)
 		}
-		inBytes = pemBlock.Bytes
+	} else if *isPEM {
+		pemBlock, _ := pem.Decode(inBytes)
+		if pemBlock == nil {
+			fmt.Fprintf(os.Stderr, "-pem provided, but input could not be parsed as PEM\n")
+			os.Exit(1)
+		}
+		inputs = []input{{bytes: pemBlock.Bytes}}
 	} else if *isHex {
 		stripped := strings.Map(func(r rune) rune {
 			if unicode.IsSpace(r) || unicode.IsPunct(r) {
@@ -75,6 +95,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "-hex provided, but input could not be parsed as hex: %s\n", err)
 			os.Exit(1)
 		}
+		inputs = []input{{bytes: inBytes}}
+	} else {
+		inputs = []input{{bytes: inBytes}}
 	}
 
 	outFile := os.Stdout
@@ -86,9 +109,22 @@ func main() {
 		}
 		defer outFile.Close()
 	}
-	_, err = outFile.WriteString(derToASCII(inBytes))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing output: %s\n", err)
-		os.Exit(1)
+	for i, inp := range inputs {
+		if len(inp.comment) > 0 {
+			if i > 0 {
+				if _, err := outFile.WriteString("\n"); err != nil {
+					fmt.Fprintf(os.Stderr, "Error writing output: %s\n", err)
+					os.Exit(1)
+				}
+			}
+			if _, err := fmt.Fprintf(outFile, "# %s\n", inp.comment); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing output: %s\n", err)
+				os.Exit(1)
+			}
+		}
+		if _, err := outFile.WriteString(derToASCII(inp.bytes)); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing output: %s\n", err)
+			os.Exit(1)
+		}
 	}
 }
