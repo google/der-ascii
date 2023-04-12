@@ -67,8 +67,9 @@ var universalTags = []struct {
 	{8, "EXTERNAL", false},
 	{9, "REAL", false},
 	{10, "ENUMERATED", false},
+	{11, "EMBEDDED_PDV", false},
 	{12, "UTF8String", false},
-	{13, "EMBEDDED_PDV", false},
+	{13, "RELATIVE_OID", false},
 	{14, "TIME", false},
 	// 15 is reserved for future expansion.
 	{16, "SEQUENCE", true},
