@@ -1,0 +1,220 @@
+# This file is used to generate oid_names.go in der2ascii. After changing this
+# file, rerun util/make_oid_name.go from the top-level directory.
+
+# Named curves
+secp224r1: 1.3.132.0.33
+secp256r1: 1.2.840.10045.3.1.7
+secp384r1: 1.3.132.0.34
+secp521r1: 1.3.132.0.35
+
+# Specified curve encodings
+prime-field: 1.2.840.10045.1.1
+
+# Hash algorithms
+md2: 1.2.840.113549.2.2
+md4: 1.2.840.113549.2.4
+md5: 1.2.840.113549.2.5
+sha1: 1.3.14.3.2.26
+sha224: 2.16.840.1.101.3.4.2.4
+sha256: 2.16.840.1.101.3.4.2.1
+sha384: 2.16.840.1.101.3.4.2.2
+sha512: 2.16.840.1.101.3.4.2.3
+
+# RSA-PSS mask generation algorithms
+mgf1: 1.2.840.113549.1.1.8
+
+# X.509 SubjectPublicKeyInfo types
+rsaEncryption: 1.2.840.113549.1.1.1
+rsassa-pss: 1.2.840.113549.1.1.10
+ecPublicKey: 1.2.840.10045.2.1
+dsa: 1.2.840.10040.4.1
+x25519: 1.3.101.110
+x448: 1.3.101.111
+
+# X.509 signature algorithm types
+md2WithRSAEncryption: 1.2.840.113549.1.1.2
+md4WithRSAEncryption: 1.2.840.113549.1.1.3
+md5WithRSAEncryption: 1.2.840.113549.1.1.4
+sha1WithRSAEncryption: 1.2.840.113549.1.1.5
+sha224WithRSAEncryption: 1.2.840.113549.1.1.14
+sha256WithRSAEncryption: 1.2.840.113549.1.1.11
+sha384WithRSAEncryption: 1.2.840.113549.1.1.12
+sha512WithRSAEncryption: 1.2.840.113549.1.1.13
+dsa-with-sha1: 1.2.840.10040.4.3
+dsa-with-sha224: 2.16.840.1.101.3.4.3.1
+dsa-with-sha256: 2.16.840.1.101.3.4.3.2
+ecdsa-with-SHA1: 1.2.840.10045.4.1
+ecdsa-with-SHA224: 1.2.840.10045.4.3.1
+ecdsa-with-SHA256: 1.2.840.10045.4.3.2
+ecdsa-with-SHA384: 1.2.840.10045.4.3.3
+ecdsa-with-SHA512: 1.2.840.10045.4.3.4
+ed25519: 1.3.101.112
+ed448: 1.3.101.113
+
+# X.509 extensions
+authorityInfoAccess: 1.3.6.1.5.5.7.1.1
+ipAddrBlocks: 1.3.6.1.5.5.7.1.7
+autonomousSysIds: 1.3.6.1.5.5.7.1.8
+subjectInfoAccess: 1.3.6.1.5.5.7.1.11
+ipAddrBlocks-v2: 1.3.6.1.5.5.7.1.28
+autonomousSysIds-v2: 1.3.6.1.5.5.7.1.29
+subjectDirectoryAttributes: 2.5.29.9
+subjectKeyIdentifier: 2.5.29.14
+keyUsage: 2.5.29.15
+privateKeyUsagePeriod: 2.5.29.16
+subjectAltName: 2.5.29.17
+issuerAltName: 2.5.29.18
+basicConstraints: 2.5.29.19
+cRLNumber: 2.5.29.20
+reasonCode: 2.5.29.21
+instructionCode: 2.5.29.23
+invalidityDate: 2.5.29.24
+deltaCRLIndicator: 2.5.29.27
+issuingDistributionPoint: 2.5.29.28
+certificateIssuer: 2.5.29.29
+nameConstraints: 2.5.29.30
+cRLDistributionPoints: 2.5.29.31
+certificatePolicies: 2.5.29.32
+policyMappings: 2.5.29.33
+authorityKeyIdentifier: 2.5.29.35
+policyConstraints: 2.5.29.36
+extKeyUsage: 2.5.29.37
+freshestCRL: 2.5.29.46
+inhibitAnyPolicy: 2.5.29.54
+
+# X.509 extended key usages
+serverAuth: 1.3.6.1.5.5.7.3.1
+clientAuth: 1.3.6.1.5.5.7.3.2
+codeSigning: 1.3.6.1.5.5.7.3.3
+emailProtection: 1.3.6.1.5.5.7.3.4
+timeStamping: 1.3.6.1.5.5.7.3.8
+OCSPSigning: 1.3.6.1.5.5.7.3.9
+bgpsec-router: 1.3.6.1.5.5.7.3.46
+anyExtendedKeyUsage: 2.5.29.37.0
+
+# X.509 policy IDs
+unotice: 1.3.6.1.5.5.7.2.2
+ipAddr-asNumber: 1.3.6.1.5.5.7.14.2
+ipAddr-asNumber-v2: 1.3.6.1.5.5.7.14.3
+anyPolicy: 2.5.29.32.0
+domain-validated: 2.23.140.1.2.1
+organization-validated: 2.23.140.1.2.2
+individual-validated: 2.23.140.1.2.3
+
+# X.509 AccessDescription types
+ocsp: 1.3.6.1.5.5.7.48.1
+caIssuers: 1.3.6.1.5.5.7.48.2
+caRepository: 1.3.6.1.5.5.7.48.5
+rpkiManifest: 1.3.6.1.5.5.7.48.10
+signedObject: 1.3.6.1.5.5.7.48.11
+rpkiNotify: 1.3.6.1.5.5.7.48.13
+
+# PKCS #9 attributes
+emailAddress: 1.2.840.113549.1.9.1
+unstructuredName: 1.2.840.113549.1.9.2
+contentType: 1.2.840.113549.1.9.3
+messageDigest: 1.2.840.113549.1.9.4
+signingTime: 1.2.840.113549.1.9.5
+counterSignature: 1.2.840.113549.1.9.6
+challengePassword: 1.2.840.113549.1.9.7
+unstructuredAddress: 1.2.840.113549.1.9.8
+extendedCertificateAttributes: 1.2.840.113549.1.9.9
+issuerAndSerialNumber: 1.2.840.113549.1.9.10
+passwordCheck: 1.2.840.113549.1.9.11
+publicKey: 1.2.840.113549.1.9.12
+signingDescription: 1.2.840.113549.1.9.13
+extensionRequest: 1.2.840.113549.1.9.14
+smimeCapabilities: 1.2.840.113549.1.9.15
+friendlyName: 1.2.840.113549.1.9.20
+
+# X.520 naming attributes
+localKeyId: 1.2.840.113549.1.9.21
+commonName: 2.5.4.3
+serialNumber: 2.5.4.5
+countryName: 2.5.4.6
+localityName: 2.5.4.7
+stateOrProvinceName: 2.5.4.8
+streetAddress: 2.5.4.9
+organizationName: 2.5.4.10
+organizationUnitName: 2.5.4.11
+title: 2.5.4.12
+postalCode: 2.5.4.17
+
+# S/MIME attributes
+receiptRequest: 1.2.840.113549.1.9.16.2.1
+securityLabel: 1.2.840.113549.1.9.16.2.2
+mlExpandHistory: 1.2.840.113549.1.9.16.2.3
+contentHint: 1.2.840.113549.1.9.16.2.4
+msgSigDigest: 1.2.840.113549.1.9.16.2.5
+contentIdentifier: 1.2.840.113549.1.9.16.2.7
+equivalentLabels: 1.2.840.113549.1.9.16.2.9
+contentReference: 1.2.840.113549.1.9.16.2.10
+encrypKeyPref: 1.2.840.113549.1.9.16.2.11
+signingCertificate: 1.2.840.113549.1.9.16.2.12
+
+# S/MIME capabilities
+preferBinaryInside: 1.2.840.113549.1.9.16.11.1
+
+# PKCS #7 content types
+data: 1.2.840.113549.1.7.1
+signedData: 1.2.840.113549.1.7.2
+envelopedData: 1.2.840.113549.1.7.3
+signedAndEnvelopedData: 1.2.840.113549.1.7.4
+digestedData: 1.2.840.113549.1.7.5
+encryptedData: 1.2.840.113549.1.7.6
+
+# Additional CMS and S/MIME content types
+receipt: 1.2.840.113549.1.9.16.1.1
+authData: 1.2.840.113549.1.9.16.1.2
+contentInfo: 1.2.840.113549.1.9.16.1.6
+routeOriginAuthz: 1.2.840.113549.1.9.16.1.24
+rpkiManifest: 1.2.840.113549.1.9.16.1.26
+rpkiGhostbusters: 1.2.840.113549.1.9.16.1.35
+geofeedCSVwithCRLF: 1.2.840.113549.1.9.16.1.47
+signedChecklist: 1.2.840.113549.1.9.16.1.48
+ASPA: 1.2.840.113549.1.9.16.1.49
+signedTAL: 1.2.840.113549.1.9.16.1.50
+
+# PKCS #12 bag types
+keyBag: 1.2.840.113549.1.12.10.1.1
+pkcs-8ShroudedKeyBag: 1.2.840.113549.1.12.10.1.2
+certBag: 1.2.840.113549.1.12.10.1.3
+crlBag: 1.2.840.113549.1.12.10.1.4
+secretBag: 1.2.840.113549.1.12.10.1.5
+safeContentsBag: 1.2.840.113549.1.12.10.1.6
+
+# PKCS #12 PBE types
+pbeWithSHAAnd128BitRC4: 1.2.840.113549.1.12.1.1
+pbeWithSHAAnd40BitRC4: 1.2.840.113549.1.12.1.2
+pbeWithSHAAnd3-KeyTripleDES-CBC: 1.2.840.113549.1.12.1.3
+pbeWithSHAAnd2-KeyTripleDES-CBC: 1.2.840.113549.1.12.1.4
+pbeWithSHAAnd128BitRC2-CBC: 1.2.840.113549.1.12.1.5
+pbewithSHAAnd40BitRC2-CBC: 1.2.840.113549.1.12.1.6
+
+# Certificate transparency OIDs
+embeddedSCTList: 1.3.6.1.4.1.11129.2.4.2
+ctPoison: 1.3.6.1.4.1.11129.2.4.3
+ctPrecertificateSigning: 1.3.6.1.4.1.11129.2.4.4
+ocspSCTList: 1.3.6.1.4.1.11129.2.4.5
+
+# PKCS #5 OIDs
+pbeWithMD2AndDES-CBC: 1.2.840.113549.1.5.1
+pbeWithMD5AndDES-CBC: 1.2.840.113549.1.5.3
+pbeWithMD2AndRC2-CBC: 1.2.840.113549.1.5.4
+pbeWithMD5AndRC2-CBC: 1.2.840.113549.1.5.6
+pbeWithSHA1AndDES-CBC: 1.2.840.113549.1.5.10
+pbeWithSHA1AndRC2-CBC: 1.2.840.113549.1.5.11
+PBKDF2: 1.2.840.113549.1.5.12
+PBES2: 1.2.840.113549.1.5.13
+PBMAC1: 1.2.840.113549.1.5.14
+hmacWithSHA1: 1.2.840.113549.2.7
+hmacWithSHA224: 1.2.840.113549.2.8
+hmacWithSHA256: 1.2.840.113549.2.9
+hmacWithSHA384: 1.2.840.113549.2.10
+hmacWithSHA512: 1.2.840.113549.2.11
+RC2-CBC: 1.2.840.113549.3.2
+DES-EDE3-CBC: 1.2.840.113549.3.7
+RC5-CBC-Pad: 1.2.840.113549.3.9
+AES-128-CBC: 2.16.840.1.101.3.4.1.2
+AES-192-CBC: 2.16.840.1.101.3.4.1.22
+AES-256-CBC: 2.16.840.1.101.3.4.1.42

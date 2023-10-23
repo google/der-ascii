@@ -232,6 +232,17 @@ func integerToString(in []byte) string {
 	return bytesToHexString(in)
 }
 
+func objectIdentifierToName(oid []byte) (string, bool) {
+	// TODO(davidben): Now that this list is generated, we may as well sort
+	// them in the generator and do a binary search here.
+	for _, entry := range oidNames {
+		if bytes.Equal(entry.oid, oid) {
+			return entry.name, true
+		}
+	}
+	return "", false
+}
+
 func objectIdentifierToString(in []byte) string {
 	oid, ok := decodeObjectIdentifier(in)
 	if !ok {
