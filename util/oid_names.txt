@@ -9,6 +9,10 @@ secp521r1: 1.3.132.0.35
 
 # Specified curve encodings
 prime-field: 1.2.840.10045.1.1
+characteristic-two-field: 1.2.840.10045.1.2
+gnBasis: 1.2.840.10045.1.2.3.1
+tpBasis: 1.2.840.10045.1.2.3.2
+ppBasis: 1.2.840.10045.1.2.3.3
 
 # Hash algorithms
 md2: 1.2.840.113549.2.2
