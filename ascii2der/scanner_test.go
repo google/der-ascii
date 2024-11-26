@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ascii2der
 
 import (
 	"bytes"
@@ -94,11 +94,6 @@ indefinite long-form:2`,
 		},
 		true,
 	},
-	// Garbage tokens.
-	{"SEQUENC", nil, false},
-	{"1...2", nil, false},
-	{"true", nil, false},
-	{"false", nil, false},
 	// Unmatched [.
 	{"[SEQUENCE", nil, false},
 	// Unmatched ".
@@ -383,9 +378,9 @@ indefinite long-form:2`,
 }
 
 func scanAll(in string) (tokens []token, ok bool) {
-	scanner := newScanner(in)
+	scanner := NewScanner(in)
 	for {
-		token, err := scanner.Next()
+		token, err := scanner.next()
 		if err != nil {
 			return
 		}
@@ -426,9 +421,18 @@ var asciiToDERTests = []struct {
 	ok  bool
 }{
 	{"SEQUENCE { INTEGER { 42 } INTEGER { 1 } }", []byte{0x30, 0x06, 0x02, 0x01, 0x2a, 0x02, 0x01, 0x01}, true},
-	// Mismatched curlies.
+	// Garbage words.
+	{"SEQUENC", nil, false},
+	{"1...2", nil, false},
+	{"true", nil, false},
+	{"false", nil, false},
+	// Mismatched brackets.
 	{"{", nil, false},
 	{"}", nil, false},
+	{"(", nil, false},
+	{")", nil, false},
+	{"({)}", nil, false},
+	{"{(})", nil, false},
 	// Invalid token.
 	{"BOGUS", nil, false},
 	// Length overrides.
@@ -442,11 +446,33 @@ var asciiToDERTests = []struct {
 	// Too long of length modifiers.
 	{"[long-form:1 99999]", nil, false},
 	{"SEQUENCE long-form:1 { `" + strings.Repeat("a", 1024) + "` }", nil, false},
+	// Function call without function name.
+	{"()", nil, false},
+	// Unknown function.
+	{"bogus()", nil, false},
+	// Basic variable usage.
+	{`define("foo", 42) var("foo") var("foo")`, []byte{42, 42}, true},
+	{
+		`
+		define(42, 42) var(42)
+		define(42, "a") var(42)
+		`,
+		[]byte{42, byte('a')},
+		true,
+	},
+	{`var("missing")`, nil, false},
+	{`var("missing", 42)`, []byte{42}, true},
+	// Empty parens -> zero args.
+	// TODO(mcyoung): if we ever add a zero-argument function, use it in this
+	// test, instead.
+	{"var()", nil, false},
+	// Empty token streams are not valid arguments.
+	{"define(, 42)", nil, false},
 }
 
 func TestASCIIToDER(t *testing.T) {
 	for i, tt := range asciiToDERTests {
-		out, err := asciiToDER(tt.in)
+		out, err := NewScanner(tt.in).Exec()
 		ok := err == nil
 		if !tt.ok {
 			if ok {
