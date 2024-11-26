@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ascii2der
 
 import (
 	"bytes"
@@ -383,9 +383,9 @@ indefinite long-form:2`,
 }
 
 func scanAll(in string) (tokens []token, ok bool) {
-	scanner := newScanner(in)
+	scanner := NewScanner(in)
 	for {
-		token, err := scanner.Next()
+		token, err := scanner.next()
 		if err != nil {
 			return
 		}
@@ -446,7 +446,7 @@ var asciiToDERTests = []struct {
 
 func TestASCIIToDER(t *testing.T) {
 	for i, tt := range asciiToDERTests {
-		out, err := asciiToDER(tt.in)
+		out, err := NewScanner(tt.in).Exec()
 		ok := err == nil
 		if !tt.ok {
 			if ok {
