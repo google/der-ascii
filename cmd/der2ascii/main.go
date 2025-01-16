@@ -64,7 +64,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *pemPassword != "" && (!*isPEM && !*isPEMAll) {
+	if *pemPassword != "" && !*isPEM && !*isPEMAll {
 		fmt.Fprintf(os.Stderr, "-pem-password provided, but neither -pem nor -pem-all provided\n")
 		os.Exit(1)
 	}
