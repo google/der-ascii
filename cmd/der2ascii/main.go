@@ -15,6 +15,7 @@
 package main
 
 import (
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"flag"
@@ -29,6 +30,7 @@ var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
 var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
 var isPEM = flag.Bool("pem", false, "treat the input as PEM and decode the first PEM block")
 var isPEMAll = flag.Bool("pem-all", false, "treat the input as PEM and decode all PEM blocks")
+var pemPassword = flag.String("pem-password", "", "password to use when decrypting PEM blocks")
 var isHex = flag.Bool("hex", false, "treat the input as hex, ignoring punctuation and whitespace")
 
 type input struct {
@@ -62,6 +64,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if *pemPassword != "" && !*isPEM && !*isPEMAll {
+		fmt.Fprintf(os.Stderr, "-pem-password provided, but neither -pem nor -pem-all provided\n")
+		os.Exit(1)
+	}
+
 	var inputs []input
 	if *isPEMAll {
 		for len(inBytes) > 0 {
@@ -70,7 +77,16 @@ func main() {
 			if pemBlock == nil {
 				break
 			}
-			inputs = append(inputs, input{comment: pemBlock.Type, bytes: pemBlock.Bytes})
+			if *pemPassword != "" {
+				bytes, err := x509.DecryptPEMBlock(pemBlock, []byte(*pemPassword))
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error decrypting PEM block: %s\n", err)
+					os.Exit(1)
+				}
+				inputs = append(inputs, input{comment: pemBlock.Type, bytes: bytes})
+			} else {
+				inputs = append(inputs, input{comment: pemBlock.Type, bytes: pemBlock.Bytes})
+			}
 		}
 		if len(inputs) == 0 {
 			fmt.Fprintf(os.Stderr, "-pem-all provided, but input could not be parsed as PEM\n")
@@ -82,7 +98,16 @@ func main() {
 			fmt.Fprintf(os.Stderr, "-pem provided, but input could not be parsed as PEM\n")
 			os.Exit(1)
 		}
-		inputs = []input{{bytes: pemBlock.Bytes}}
+		if *pemPassword != "" {
+			bytes, err := x509.DecryptPEMBlock(pemBlock, []byte(*pemPassword))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error decrypting PEM block: %s\n", err)
+				os.Exit(1)
+			}
+			inputs = []input{{bytes: bytes}}
+		} else {
+			inputs = []input{{bytes: pemBlock.Bytes}}
+		}
 	} else if *isHex {
 		stripped := strings.Map(func(r rune) rune {
 			if unicode.IsSpace(r) || unicode.IsPunct(r) {
