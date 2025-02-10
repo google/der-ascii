@@ -12,15 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ascii2der
 
 import (
 	"errors"
 	"fmt"
+	"unicode/utf16"
 
 	"github.com/google/der-ascii/internal"
 )
 
+// appendUTF16 marshals r using UTF-16 and appends the result to dst, returning
+// the updated slice.
+//
+// This logic intentionally tolerates unpaired surrogates.
+func appendUTF16(dst []byte, r rune) []byte {
+	if r <= 0xffff {
+		return append(dst, byte(r>>8), byte(r))
+	}
+
+	r1, r2 := utf16.EncodeRune(r)
+	dst = append(dst, byte(r1>>8), byte(r1))
+	dst = append(dst, byte(r2>>8), byte(r2))
+	return dst
+}
+
+// appendUTF16 marshals r using UTF-32 and appends the result to dst, returning
+// the updated slice.
+//
+// In other words, this function writes r as an integer in big-endian order.
+func appendUTF32(dst []byte, r rune) []byte {
+	return append(dst, byte(r>>24), byte(r>>16), byte(r>>8), byte(r))
+}
+
+// appendBase128 marshals an integer in base 128, a varint format used by OIDs
+// and long-form tag numbers, and appends the result to dst, returning the
+// updated slice.
+//
+// This function is the same as appendBase128WithLength with length set to zero,
+// which cannot fail.
 func appendBase128(dst []byte, value uint32) []byte {
 	dst, err := appendBase128WithLength(dst, value, 0)
 	if err != nil {
@@ -30,6 +60,11 @@ func appendBase128(dst []byte, value uint32) []byte {
 	return dst
 }
 
+// appendBase128 marshals an integer in base 128, a varint format used by OIDs
+// and long-form tag numbers, and appends the result to dst, returning the
+// updated slice.
+//
+// If length is zero, the minimal length is chosen.
 func appendBase128WithLength(dst []byte, value uint32, length int) ([]byte, error) {
 	// Count how many bytes are needed.
 	var l int
@@ -120,18 +155,25 @@ func appendInteger(dst []byte, value int64) []byte {
 	return dst
 }
 
-func appendObjectIdentifier(dst []byte, value []uint32) ([]byte, bool) {
+// appendObjectIdentifier marshals the given array of integers as an OID.
+func appendObjectIdentifier(dst []byte, value []uint32) ([]byte, error) {
 	// Validate the input before anything is written.
-	if len(value) < 2 || value[0] > 2 || (value[0] < 2 && value[1] > 39) {
-		return dst, false
+	if len(value) < 2 {
+		return dst, errors.New("OIDs must have at least two arcs")
+	}
+	if value[0] > 2 {
+		return dst, fmt.Errorf("first arc of an OID must be one of 0, 1, or 2; got %d", value[0])
+	}
+	if value[0] < 2 && value[1] > 39 {
+		return dst, fmt.Errorf("second arc of an OID must be at most 39; got %d", value[1])
 	}
 	if value[0]*40+value[1] < value[1] {
-		return dst, false
+		return dst, errors.New("first two arcs overflowed")
 	}
 
 	dst = appendBase128(dst, value[0]*40+value[1])
 	for _, v := range value[2:] {
 		dst = appendBase128(dst, v)
 	}
-	return dst, true
+	return dst, nil
 }

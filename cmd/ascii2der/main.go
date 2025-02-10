@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/google/der-ascii/ascii2der"
 )
 
 var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
@@ -52,7 +54,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	outBytes, err := asciiToDER(string(inBytes))
+	scanner := ascii2der.NewScanner(string(inBytes))
+	scanner.SetFile(*inPath)
+
+	outBytes, err := scanner.Exec()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Syntax error: %s\n", err)
 		os.Exit(1)
