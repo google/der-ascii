@@ -151,7 +151,7 @@ FALSE
 [PRIVATE 2]
 [UNIVERSAL 16] # This is a SEQUENCE.
 [UNIVERSAL 2 PRIMITIVE] # This is an INTEGER.
-[long-form:2 UNIVERSAL 2 PRIMTIVE] # This is `1f0002` instead of `02`.
+[long-form:2 UNIVERSAL 2 PRIMITIVE] # This is `1f0002` instead of `02`.
 
 # As a shorthand, one may write type names from ASN.1, replacing spaces with
 # underscore. These specify tag, number, and the constructed bit. The
