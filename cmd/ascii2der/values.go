@@ -23,18 +23,39 @@ import (
 	"github.com/google/der-ascii/internal"
 )
 
-const longFormPrefix = "long-form:"
+const (
+	adjustLengthPrefix = "adjust-length:"
+	longFormPrefix     = "long-form:"
+)
+
+func isAdjustLength(s string) bool {
+	return strings.HasPrefix(s, adjustLengthPrefix)
+}
+
+func decodeAdjustLength(s string) (int, error) {
+	s, ok := strings.CutPrefix(s, adjustLengthPrefix)
+	if !ok {
+		return 0, errors.New("not an adjust-length token")
+	}
+
+	l, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+	return l, nil
+}
 
 func isLongFormOverride(s string) bool {
 	return strings.HasPrefix(s, longFormPrefix)
 }
 
 func decodeLongFormOverride(s string) (int, error) {
-	if !isLongFormOverride(s) {
+	s, ok := strings.CutPrefix(s, longFormPrefix)
+	if !ok {
 		return 0, errors.New("not a long-form override")
 	}
 
-	l, err := strconv.Atoi(s[len(longFormPrefix):])
+	l, err := strconv.Atoi(s)
 	if err != nil {
 		return 0, err
 	}

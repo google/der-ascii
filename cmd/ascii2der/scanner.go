@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -43,8 +44,29 @@ const (
 	tokenRightCurly
 	tokenIndefinite
 	tokenLongForm
+	tokenAdjustLength
 	tokenEOF
 )
+
+func (k tokenKind) String() string {
+	switch k {
+	case tokenBytes:
+		return "bytes"
+	case tokenLeftCurly:
+		return "'{'"
+	case tokenRightCurly:
+		return "'}'"
+	case tokenIndefinite:
+		return "indefinite"
+	case tokenLongForm:
+		return "long-form"
+	case tokenAdjustLength:
+		return "adjust-length"
+	case tokenEOF:
+		return "EOF"
+	}
+	panic(fmt.Sprintf("unknown token %d", k))
+}
 
 // A parseError is an error during parsing DER ASCII.
 type parseError struct {
@@ -66,7 +88,8 @@ type token struct {
 	// Pos is the position of the first byte of the token.
 	Pos position
 	// Length, for a tokenLongForm token, is the number of bytes to use to
-	// encode the length, not including the initial one.
+	// encode the length, not including the initial one. For a tokenAdjustLength
+	// token, is the amount to adjust the total length by.
 	Length int
 }
 
@@ -423,6 +446,14 @@ loop:
 		return token{Kind: tokenIndefinite}, nil
 	}
 
+	if isAdjustLength(symbol) {
+		l, err := decodeAdjustLength(symbol)
+		if err != nil {
+			return token{}, &parseError{start, err}
+		}
+		return token{Kind: tokenAdjustLength, Length: l}, nil
+	}
+
 	if isLongFormOverride(symbol) {
 		l, err := decodeLongFormOverride(symbol)
 		if err != nil {
@@ -471,22 +502,43 @@ func (s *scanner) consumeUpTo(b byte) (string, bool) {
 
 func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 	var out []byte
-	var lengthModifier *token
+	var lengthModifier, adjustLength *token
+	leftCurlyExpected := func() error {
+		if lengthModifier != nil {
+			return &parseError{lengthModifier.Pos, fmt.Errorf("%s token must modify '{'", lengthModifier.Kind)}
+		}
+		if adjustLength != nil {
+			return &parseError{adjustLength.Pos, fmt.Errorf("%s token must modify '{'", adjustLength.Kind)}
+		}
+		return nil
+	}
 	for {
 		token, err := scanner.Next()
 		if err != nil {
 			return nil, err
 		}
-		if lengthModifier != nil && token.Kind != tokenLeftCurly {
-			return nil, &parseError{lengthModifier.Pos, errors.New("length modifier was not followed by '{'")}
-		}
 		switch token.Kind {
 		case tokenBytes:
+			if err := leftCurlyExpected(); err != nil {
+				return nil, err
+			}
 			out = append(out, token.Value...)
 		case tokenLeftCurly:
 			child, err := asciiToDERImpl(scanner, &token)
 			if err != nil {
 				return nil, err
+			}
+			length := len(child)
+			if adjustLength != nil {
+				length += adjustLength.Length
+				// Enforce a limit of int32, purely so that the limits are not
+				// target-specific.
+				if length < 0 || length > math.MaxInt32 {
+					if adjustLength.Length < 0 {
+						return nil, &parseError{token.Pos, errors.New("length adjustment underflowed")}
+					}
+					return nil, &parseError{token.Pos, errors.New("length adjustment overflowed")}
+				}
 			}
 			var lengthOverride int
 			if lengthModifier != nil {
@@ -495,31 +547,44 @@ func asciiToDERImpl(scanner *scanner, leftCurly *token) ([]byte, error) {
 					out = append(out, child...)
 					out = append(out, 0x00, 0x00)
 					lengthModifier = nil
+					adjustLength = nil
 					break
 				}
 				if lengthModifier.Kind == tokenLongForm {
 					lengthOverride = lengthModifier.Length
 				}
 			}
-			out, err = appendLength(out, len(child), lengthOverride)
+			out, err = appendLength(out, length, lengthOverride)
 			if err != nil {
 				// appendLength may fail if the lengthModifier was incompatible.
 				return nil, &parseError{lengthModifier.Pos, err}
 			}
 			out = append(out, child...)
 			lengthModifier = nil
+			adjustLength = nil
 		case tokenRightCurly:
 			if leftCurly != nil {
 				return out, nil
 			}
 			return nil, &parseError{token.Pos, errors.New("unmatched '}'")}
 		case tokenLongForm, tokenIndefinite:
-			lengthModifier = &token
-		case tokenEOF:
-			if leftCurly == nil {
-				return out, nil
+			if lengthModifier != nil {
+				return nil, &parseError{token.Pos, fmt.Errorf("found %s token but already seen %s token", token.Kind, lengthModifier.Kind)}
 			}
-			return nil, &parseError{leftCurly.Pos, errors.New("unmatched '{'")}
+			lengthModifier = &token
+		case tokenAdjustLength:
+			if adjustLength != nil {
+				return nil, &parseError{token.Pos, errors.New("duplicate adjust-length token")}
+			}
+			adjustLength = &token
+		case tokenEOF:
+			if err := leftCurlyExpected(); err != nil {
+				return nil, err
+			}
+			if leftCurly != nil {
+				return nil, &parseError{leftCurly.Pos, errors.New("unmatched '{'")}
+			}
+			return out, nil
 		default:
 			panic(token)
 		}

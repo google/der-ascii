@@ -20,25 +20,6 @@ import (
 	"testing"
 )
 
-func tokenToString(kind tokenKind) string {
-	switch kind {
-	case tokenBytes:
-		return "bytes"
-	case tokenLeftCurly:
-		return "left-curly"
-	case tokenRightCurly:
-		return "right-curly"
-	case tokenIndefinite:
-		return "indefinite"
-	case tokenLongForm:
-		return "long-form"
-	case tokenEOF:
-		return "EOF"
-	default:
-		panic(kind)
-	}
-}
-
 var scannerTests = []struct {
 	in     string
 	tokens []token
@@ -61,7 +42,7 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 ` + "`AABBCC`" + `
 
 # Length modifiers
-indefinite long-form:2`,
+indefinite long-form:2 adjust-length:10 adjust-length:-10`,
 		[]token{
 			{Kind: tokenBytes, Value: []byte{0x30}},
 			{Kind: tokenBytes, Value: []byte{0x30}},
@@ -90,6 +71,8 @@ indefinite long-form:2`,
 			{Kind: tokenBytes, Value: []byte{0xaa, 0xbb, 0xcc}},
 			{Kind: tokenIndefinite},
 			{Kind: tokenLongForm, Length: 2},
+			{Kind: tokenAdjustLength, Length: 10},
+			{Kind: tokenAdjustLength, Length: -10},
 			{Kind: tokenEOF},
 		},
 		true,
@@ -374,12 +357,16 @@ indefinite long-form:2`,
 	{`u"hello`, nil, false},
 	{`U"hello`, nil, false},
 	{"b`0101", nil, false},
-	// Long-form with invalid number.
+	// long-form with invalid number.
 	{"long-form:", nil, false},
 	{"long-form:garbage", nil, false},
 	{"long-form:2garbage", nil, false},
 	{"long-form:0", nil, false},
 	{"long-form:-1", nil, false},
+	// adjust-length with invalid number.
+	{"adjust-length:", nil, false},
+	{"adjust-length:garbage", nil, false},
+	{"adjust-length:2garbage", nil, false},
 }
 
 func scanAll(in string) (tokens []token, ok bool) {
@@ -406,7 +393,7 @@ func TestScanner(t *testing.T) {
 
 		for j := 0; j < len(tokens) && j < len(tt.tokens); j++ {
 			if tokens[j].Kind != tt.tokens[j].Kind {
-				t.Errorf("%d. token %d was %s, wanted %s.", i, j, tokenToString(tokens[j].Kind), tokenToString(tt.tokens[j].Kind))
+				t.Errorf("%d. token %d was %s, wanted %s.", i, j, tokens[j].Kind, tt.tokens[j].Kind)
 			} else if tokens[j].Kind == tokenBytes && !bytes.Equal(tokens[j].Value, tt.tokens[j].Value) {
 				t.Errorf("%d. token %d had value %x, wanted %x.", i, j, tokens[j].Value, tt.tokens[j].Value)
 			} else if tokens[j].Kind == tokenLongForm && tokens[j].Length != tt.tokens[j].Length {
@@ -431,17 +418,34 @@ var asciiToDERTests = []struct {
 	{"}", nil, false},
 	// Invalid token.
 	{"BOGUS", nil, false},
-	// Length overrides.
+	// Length modifiers.
 	{"[long-form:2 INTEGER] long-form:3 { 42 }", []byte{0x1f, 0x80, 0x02, 0x83, 0x00, 0x00, 0x01, 0x2a}, true},
 	{"SEQUENCE indefinite { INTEGER { 42 } }", []byte{0x30, 0x80, 0x02, 0x01, 0x2a, 0x00, 0x00}, true},
-	// Mismatched length modifiers.
+	{"SEQUENCE adjust-length:1 {}", []byte{0x30, 0x01}, true},
+	{"INTEGER adjust-length:-1 { 0 }", []byte{0x02, 0x00, 0x00}, true},
+	{"SEQUENCE long-form:1 adjust-length:1 {}", []byte{0x30, 0x81, 0x01}, true},
+	{"SEQUENCE adjust-length:1 long-form:1 {}", []byte{0x30, 0x81, 0x01}, true},
+	// Length modifiers that do not modify a length.
 	{"indefinite", nil, false},
 	{"indefinite SEQUENCE { }", nil, false},
 	{"long-form:2", nil, false},
 	{"long-form:2 SEQUENCE { }", nil, false},
+	{"adjust-length:2", nil, false},
+	{"adjust-length:2 SEQUENCE { }", nil, false},
+	{"long-form:2 adjust-length:2", nil, false},
+	{"long-form:2 adjust-length:2 SEQUENCE { }", nil, false},
+	// Conflicting length modifiers.
+	{"SEQUENCE adjust-length:1 adjust-length:1 {}", nil, false},
+	{"SEQUENCE long-form:1 long-form:2 {}", nil, false},
+	{"SEQUENCE long-form:1 adjust-length:2 long-form:3 {}", nil, false},
+	{"SEQUENCE long-form:1 indefinite {}", nil, false},
+	{"SEQUENCE indefinite indefinite {}", nil, false},
 	// Too long of length modifiers.
 	{"[long-form:1 99999]", nil, false},
 	{"SEQUENCE long-form:1 { `" + strings.Repeat("a", 1024) + "` }", nil, false},
+	// Length adjustment overflow and underflow.
+	{"OCTET_STRING adjust-length:-1 {}", nil, false},
+	{"OCTET_STRING adjust-length:2147483647 { \"a\" }", nil, false},
 }
 
 func TestASCIIToDER(t *testing.T) {
