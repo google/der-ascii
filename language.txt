@@ -183,6 +183,9 @@ OCTET_STRING
 # indefinite-length encoding. It may alternatively be preceded by 'long-form:N'
 # to use long-form encoding with the specified number of bytes after the
 # leading byte. This may be used for non-minimal length encodings.
+#
+# An open curly brace may also optionally be preceded by 'adjust-length:N', to
+# add N (which may be negative) to the length before encoding.
 
 # This is an OID.
 OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585 }
@@ -220,6 +223,15 @@ SEQUENCE indefinite {
 
 # This INTEGER encodes its length as `8101` instead of `01`.
 INTEGER long-form:1 { 5 }
+
+# This integer encodes a length of 2, when it should encode a length of 1.
+INTEGER adjust-length:1 { 5 }
+
+# This integer encodes a length of 0, when it should encode a length of 1.
+INTEGER adjust-length:-1 { 5 }
+
+# Modifiers may be combined. This encodes a length of `8102`.
+INTEGER long-form:1 adjust-length:1 { 5 }
 
 # This is a BER constructed OCTET STRING.
 [OCTET_STRING CONSTRUCTED] {
