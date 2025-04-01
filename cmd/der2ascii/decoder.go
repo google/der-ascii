@@ -189,7 +189,7 @@ func decodeInteger(bytes []byte) (int64, bool) {
 	return val, true
 }
 
-// decodeInteger decodes bytes as the contents of a DER OBJECT IDENTIFIER. It
+// decodeObjectIdentifier decodes bytes as the contents of a DER OBJECT IDENTIFIER. It
 // returns the value on success and false otherwise.
 func decodeObjectIdentifier(bytes []byte) (oid []uint32, ok bool) {
 	// Reserve a space as the first component is split.
@@ -218,6 +218,28 @@ func decodeObjectIdentifier(bytes []byte) (oid []uint32, ok bool) {
 	} else if oid[1] >= 40 {
 		oid[0] = 1
 		oid[1] -= 40
+	}
+
+	return oid, true
+}
+
+// decodeRelativeOID decodes bytes as the contents of a DER RELATIVE-OID. It
+// returns the value on success and false otherwise.
+func decodeRelativeOID(bytes []byte) (oid []uint32, ok bool) {
+	// Decode each component.
+	for len(bytes) != 0 {
+		var c uint32
+		var lengthOverride int
+		c, lengthOverride, bytes, ok = parseBase128(bytes)
+		if !ok || lengthOverride != 0 {
+			return nil, false
+		}
+		oid = append(oid, c)
+	}
+
+	// Relative OIDs must have at least one component.
+	if len(oid) < 1 {
+		return nil, false
 	}
 
 	return oid, true

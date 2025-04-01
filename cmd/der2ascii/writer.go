@@ -258,6 +258,19 @@ func objectIdentifierToString(in []byte) string {
 	return out.String()
 }
 
+func relativeOIDToString(in []byte) string {
+	oid, ok := decodeRelativeOID(in)
+	if !ok {
+		return bytesToHexString(in)
+	}
+	var out bytes.Buffer
+	for _, v := range oid {
+		out.WriteString(".")
+		out.WriteString(strconv.FormatUint(uint64(v), 10))
+	}
+	return out.String()
+}
+
 func addLine(out *bytes.Buffer, indent int, value string) {
 	for i := 0; i < indent; i++ {
 		out.WriteString("  ")
@@ -344,6 +357,8 @@ func derToASCIIImpl(out *bytes.Buffer, in []byte, indent int, stopAtEOC bool) []
 					addLine(out, indent, fmt.Sprintf("# %s", name))
 				}
 				addLine(out, indent, fmt.Sprintf("%s %s }", header, objectIdentifierToString(elem.body)))
+			case "RELATIVE_OID":
+				addLine(out, indent, fmt.Sprintf("%s %s }", header, relativeOIDToString(elem.body)))
 			case "BOOLEAN":
 				var encoded string
 				if len(elem.body) == 1 && elem.body[0] == 0x00 {

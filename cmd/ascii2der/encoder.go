@@ -135,3 +135,10 @@ func appendObjectIdentifier(dst []byte, value []uint32) ([]byte, bool) {
 	}
 	return dst, true
 }
+
+func appendRelativeOID(dst []byte, value []uint32) []byte {
+	for _, v := range value {
+		dst = appendBase128(dst, v)
+	}
+	return dst
+}

@@ -122,6 +122,17 @@ func TestObjectIdentifierToString(t *testing.T) {
 	testConvertFunc(t, "objectIdentifierToString", objectIdentifierToString, objectIdentifierToStringTests)
 }
 
+var relativeOIDToStringTests = []convertFuncTest{
+	// Prefer to encode relative OIDs as relative OIDs.
+	{[]byte{1, 2, 3, 4, 5}, ".1.2.3.4.5"},
+	// Invalid relative OIDs are encoded in hex.
+	{[]byte{0x80, 0x00}, "`8000`"},
+}
+
+func TestRelativeOIDToString(t *testing.T) {
+	testConvertFunc(t, "relativeOIDToString", relativeOIDToString, relativeOIDToStringTests)
+}
+
 var derToASCIITests = []convertFuncTest{
 	// Test the X.509 BIT STRING heuristic.
 	{
@@ -223,6 +234,20 @@ var derToASCIITests = []convertFuncTest{
 	{
 		[]byte{0x06, 0x02, 0x80, 0x00},
 		"OBJECT_IDENTIFIER { `8000` }\n",
+	},
+	// RELATIVE-OIDs are pretty-printed if possible.
+	{
+		[]byte{0x0d, 0x03, 0x01, 0x02, 0x03},
+		"RELATIVE_OID { .1.2.3 }\n",
+	},
+	{
+		[]byte{0x0d, 0x01, 0x01},
+		"RELATIVE_OID { .1 }\n",
+	},
+	// RELATIVE-OIDs are hex-encoded if invalid.
+	{
+		[]byte{0x0d, 0x02, 0x80, 0x00},
+		"RELATIVE_OID { `8000` }\n",
 	},
 	// TRUE and FALSE are detected in BOOLEANs.
 	{

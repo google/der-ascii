@@ -274,3 +274,34 @@ func TestDecodeObjectIdentifier(t *testing.T) {
 		}
 	}
 }
+
+var decodeRelativeOIDTests = []struct {
+	in  []byte
+	out []uint32
+	ok  bool
+}{
+	{[]byte{1}, []uint32{1}, true},
+	{[]byte{1, 2, 3, 4, 0x7f, 0x81, 0x00, 0x81, 0x01}, []uint32{1, 2, 3, 4, 127, 128, 129}, true},
+	{[]byte{0x8f, 0xff, 0xff, 0xff, 0x7f}, []uint32{math.MaxUint32}, true},
+	// Empty.
+	{[]byte{}, nil, false},
+	// Incomplete component.
+	{[]byte{0xff}, nil, false},
+	// Overflow.
+	{[]byte{0x9f, 0xff, 0xff, 0xff, 0x7f}, nil, false},
+}
+
+func TestDecodeRelativeOID(t *testing.T) {
+	for i, tt := range decodeRelativeOIDTests {
+		out, ok := decodeRelativeOID(tt.in)
+		if !tt.ok {
+			if ok {
+				t.Errorf("%d. decodeRelativeOID(%v) unexpectedly succeeded.", i, tt.in)
+			}
+		} else if !ok {
+			t.Errorf("%d. decodeRelativeOID(%v) unexpectedly failed.", i, tt.in)
+		} else if !eqUint32s(out, tt.out) {
+			t.Errorf("%d. decodeRelativeOID(%v) = %v wanted %v.", i, tt.in, out, tt.out)
+		}
+	}
+}

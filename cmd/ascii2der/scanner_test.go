@@ -27,7 +27,7 @@ var scannerTests = []struct {
 }{
 	{
 		`# First, the basic kinds of tokens.
-SEQUENCE [SEQUENCE] 1 -1 1.2.3.4 ` + "`aabbcc`" + ` "hello" TRUE FALSE { }
+SEQUENCE [SEQUENCE] 1 -1 1.2.3.4 .1.2.3.4 ` + "`aabbcc`" + ` "hello" TRUE FALSE { }
 
 # Tokens can be bunched up together.
 SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
@@ -49,6 +49,7 @@ indefinite long-form:2 adjust-length:10 adjust-length:-10`,
 			{Kind: tokenBytes, Value: []byte{0x01}},
 			{Kind: tokenBytes, Value: []byte{0xff}},
 			{Kind: tokenBytes, Value: []byte{42, 3, 4}},
+			{Kind: tokenBytes, Value: []byte{1, 2, 3, 4}},
 			{Kind: tokenBytes, Value: []byte{0xaa, 0xbb, 0xcc}},
 			{Kind: tokenBytes, Value: []byte("hello")},
 			{Kind: tokenBytes, Value: []byte{0xff}},

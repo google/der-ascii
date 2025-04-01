@@ -94,8 +94,9 @@ type token struct {
 }
 
 var (
-	regexpInteger = regexp.MustCompile(`^-?[0-9]+$`)
-	regexpOID     = regexp.MustCompile(`^[0-9]+(\.[0-9]+)+$`)
+	regexpInteger     = regexp.MustCompile(`^-?[0-9]+$`)
+	regexpOID         = regexp.MustCompile(`^[0-9]+(\.[0-9]+)+$`)
+	regexpRelativeOID = regexp.MustCompile(`^(\.[0-9]+)+$`)
 )
 
 type scanner struct {
@@ -431,6 +432,20 @@ loop:
 		if !ok {
 			return token{}, errors.New("invalid OID")
 		}
+		return token{Kind: tokenBytes, Value: der, Pos: s.pos}, nil
+	}
+
+	if regexpRelativeOID.MatchString(symbol) {
+		oidStr := strings.Split(symbol[1:], ".")
+		var oid []uint32
+		for _, s := range oidStr {
+			u, err := strconv.ParseUint(s, 10, 32)
+			if err != nil {
+				return token{}, &parseError{start, err}
+			}
+			oid = append(oid, uint32(u))
+		}
+		der := appendRelativeOID(nil, oid)
 		return token{Kind: tokenBytes, Value: der, Pos: s.pos}, nil
 	}
 

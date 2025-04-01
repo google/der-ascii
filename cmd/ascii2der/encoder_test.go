@@ -186,3 +186,28 @@ func TestAppendObjectIdentifier(t *testing.T) {
 		}
 	}
 }
+
+var appendRelativeOIDTests = []struct {
+	value   []uint32
+	encoded []byte
+}{
+	{[]uint32{1}, []byte{1}},
+	{[]uint32{1, 2, 3, 4, 0, 127, 128, 129}, []byte{1, 2, 3, 4, 0, 0x7f, 0x81, 0x00, 0x81, 0x01}},
+	{[]uint32{math.MaxUint32}, []byte{0x8f, 0xff, 0xff, 0xff, 0x7f}},
+	// This is not actually valid, but the tokenizer will never try to serialize it.
+	{[]uint32{}, []byte{}},
+}
+
+func TestAppendRelativeOID(t *testing.T) {
+	for i, tt := range appendRelativeOIDTests {
+		dst := appendRelativeOID(nil, tt.value)
+		if !bytes.Equal(dst, tt.encoded) {
+			t.Errorf("%d. appendRelativeOID(nil, %v) = %v, wanted %v.", i, tt.value, dst, tt.encoded)
+		}
+
+		dst = appendRelativeOID(dst, tt.value)
+		if l := len(tt.encoded); len(dst) != l*2 || !bytes.Equal(dst[:l], tt.encoded) || !bytes.Equal(dst[l:], tt.encoded) {
+			t.Errorf("%d. appendRelativeOID did not preserve existing contents.", i)
+		}
+	}
+}

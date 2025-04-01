@@ -117,6 +117,13 @@ b`1010|1010`
 1.2.840.113554.4.1.72585
 
 
+# Relative object identifiers.
+
+# Tokens which match /(\.[0-9]+)+/ are relative OID tokens.
+# They emit the contents of the value's DER encoding as a RELATIVE-OID.
+.4.1.72585
+
+
 # Booleans.
 
 # The following tokens emit `ff` and `00`, respectively.
