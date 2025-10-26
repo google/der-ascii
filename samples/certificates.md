@@ -26,7 +26,7 @@ Now sign that with the issuing private key. If using OpenSSL's command-line
 tool, here is a sample command:
 
     ascii2der -i tbs-cert.txt | openssl dgst -sha256 -sign issuer_key.pem | \
-        xxd -p -c 9999 > signature.txt
+        xxd -p -c 0 > signature.txt
 
 For other options, replace `-sha256` with a different digest or pass `-sigopt`.
 See [OpenSSL's documentation](https://www.openssl.org/docs/man1.1.1/man1/dgst.html)
