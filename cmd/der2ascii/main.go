@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
@@ -22,20 +23,32 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"unicode"
 )
 
-var inPath = flag.String("i", "", "input file to use (defaults to stdin)")
-var outPath = flag.String("o", "", "output file to use (defaults to stdout)")
-var isPEM = flag.Bool("pem", false, "treat the input as PEM and decode the first PEM block")
-var isPEMAll = flag.Bool("pem-all", false, "treat the input as PEM and decode all PEM blocks")
-var pemPassword = flag.String("pem-password", "", "password to use when decrypting PEM blocks")
-var isHex = flag.Bool("hex", false, "treat the input as hex, ignoring punctuation and whitespace")
+var (
+	inPath      = flag.String("i", "", "input file to use (defaults to stdin)")
+	outPath     = flag.String("o", "", "output file to use (defaults to stdout)")
+	isPEM       = flag.Bool("pem", false, "treat the input as PEM and decode the first PEM block")
+	isPEMAll    = flag.Bool("pem-all", false, "treat the input as PEM and decode all PEM blocks")
+	pemPassword = flag.String("pem-password", "", "password to use when decrypting PEM blocks")
+	isHex       = flag.Bool("hex", false, "treat the input as hex, ignoring punctuation and whitespace")
+	isArray     = flag.Bool("array", false, "treat the input as a array of comma-separated integers")
+)
 
 type input struct {
 	comment string
 	bytes   []byte
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	} else {
+		return 0
+	}
 }
 
 func main() {
@@ -43,6 +56,12 @@ func main() {
 
 	if flag.NArg() > 0 {
 		fmt.Fprintf(os.Stderr, "Usage: %s [OPTION...]\n", os.Args[0])
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	if boolToInt(*isPEM)+boolToInt(*isPEMAll)+boolToInt(*isHex)+boolToInt(*isArray) > 1 {
+		fmt.Fprintf(os.Stderr, "At most one of -pem, -pem-all, -hex, and -array may be specified.\n")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -121,6 +140,24 @@ func main() {
 			os.Exit(1)
 		}
 		inputs = []input{{bytes: inBytes}}
+	} else if *isArray {
+		// Trim whitespace and brackets.
+		trimmed := strings.TrimFunc(string(inBytes), func(r rune) bool {
+			return r == '[' || r == ']' || r == '{' || r == '}' || r == ',' || unicode.IsSpace(r)
+		})
+		nums := strings.Split(trimmed, ",")
+		var buf bytes.Buffer
+		buf.Grow(len(nums))
+		for _, num := range nums {
+			num = strings.TrimSpace(num)
+			v, err := strconv.ParseUint(num, 0, 8)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error decoding array: %s\n", err)
+				os.Exit(1)
+			}
+			buf.WriteByte(byte(v))
+		}
+		inputs = []input{{bytes: buf.Bytes()}}
 	} else {
 		inputs = []input{{bytes: inBytes}}
 	}
