@@ -16,30 +16,41 @@ package main
 
 import "github.com/google/der-ascii/internal"
 
-func parseBase128(bytes []byte) (ret uint32, lengthOverride int, rest []byte, ok bool) {
+func parseBase128(bytes []byte) (ret uint32, rest []byte, ok bool) {
 	rest = bytes
-	if len(rest) == 0 {
+	// There must be at least one byte, and the value must be minimally-encoded.
+	if len(rest) == 0 || rest[0] == 0x80 {
 		return
 	}
-
-	isMinimal := rest[0] != 0x80
 	for {
 		if len(rest) == 0 || (ret<<7)>>7 != ret {
-			// Input too small or overflow.
+			// Input too small or would overflow.
 			return
 		}
 		b := rest[0]
-		ret <<= 7
-		ret |= uint32(b & 0x7f)
+		ret = (ret << 7) | uint32(b&0x7f)
 		rest = rest[1:]
 		if b&0x80 == 0 {
 			ok = true
-			if !isMinimal {
-				lengthOverride = len(bytes) - len(rest)
-			}
 			return
 		}
 	}
+}
+
+func parseBase128Lax(bytes []byte) (ret uint32, lengthOverride int, rest []byte, ok bool) {
+	rest = bytes
+	// Tolerate non-minimal inputs.
+	isMinimal := true
+	for len(rest) != 0 && rest[0] == 0x80 {
+		isMinimal = false
+		rest = rest[1:]
+	}
+	ret, rest, ok = parseBase128(rest)
+	if ok && !isMinimal {
+		// Tell the caller how to reconstruct the non-minimal input.
+		lengthOverride = len(bytes) - len(rest)
+	}
+	return
 }
 
 // parseTag parses a tag from b, returning the resulting tag and the remainder
@@ -65,7 +76,7 @@ func parseTag(bytes []byte) (tag internal.Tag, rest []byte, ok bool) {
 		return
 	}
 
-	n, lengthOverride, rest, base128Ok := parseBase128(rest)
+	n, lengthOverride, rest, base128Ok := parseBase128Lax(rest)
 	if !base128Ok {
 		// Parse error.
 		rest = bytes
@@ -198,9 +209,8 @@ func decodeObjectIdentifier(bytes []byte) (oid []uint32, ok bool) {
 	// Decode each component.
 	for len(bytes) != 0 {
 		var c uint32
-		var lengthOverride int
-		c, lengthOverride, bytes, ok = parseBase128(bytes)
-		if !ok || lengthOverride != 0 {
+		c, bytes, ok = parseBase128(bytes)
+		if !ok {
 			return nil, false
 		}
 		oid = append(oid, c)
@@ -229,9 +239,8 @@ func decodeRelativeOID(bytes []byte) (oid []uint32, ok bool) {
 	// Decode each component.
 	for len(bytes) != 0 {
 		var c uint32
-		var lengthOverride int
-		c, lengthOverride, bytes, ok = parseBase128(bytes)
-		if !ok || lengthOverride != 0 {
+		c, bytes, ok = parseBase128(bytes)
+		if !ok {
 			return nil, false
 		}
 		oid = append(oid, c)
