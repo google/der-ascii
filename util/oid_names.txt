@@ -60,6 +60,7 @@ ecdsa-with-SHA384: 1.2.840.10045.4.3.3
 ecdsa-with-SHA512: 1.2.840.10045.4.3.4
 ed25519: 1.3.101.112
 ed448: 1.3.101.113
+alg-unsigned: 1.3.6.1.5.5.7.6.36
 
 # X.509 extensions
 authorityInfoAccess: 1.3.6.1.5.5.7.1.1
@@ -150,6 +151,9 @@ organizationName: 2.5.4.10
 organizationUnitName: 2.5.4.11
 title: 2.5.4.12
 postalCode: 2.5.4.17
+
+# PKIX relative distinguished name attributes
+rdna-unsigned: 1.3.6.1.5.5.7.25.1
 
 # S/MIME attributes
 receiptRequest: 1.2.840.113549.1.9.16.2.1
