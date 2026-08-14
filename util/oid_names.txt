@@ -189,6 +189,10 @@ geofeedCSVwithCRLF: 1.2.840.113549.1.9.16.1.47
 signedChecklist: 1.2.840.113549.1.9.16.1.48
 ASPA: 1.2.840.113549.1.9.16.1.49
 signedTAL: 1.2.840.113549.1.9.16.1.50
+rpkiCanonicalCacheRepresentation: 1.2.840.113549.1.9.16.1.54
+rpkiErikIndex: 1.2.840.113549.1.9.16.1.55
+rpkiErikPartition: 1.2.840.113549.1.9.16.1.56
+rpkiErikSegmentIndex: 1.2.840.113549.1.9.16.1.59
 
 # PKCS #12 bag types
 keyBag: 1.2.840.113549.1.12.10.1.1
