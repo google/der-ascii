@@ -1,3 +1,3 @@
 module github.com/google/der-ascii
 
-go 1.12
+go 1.27

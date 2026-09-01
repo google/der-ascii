@@ -420,13 +420,13 @@ loop:
 
 	if regexpOID.MatchString(symbol) {
 		oidStr := strings.Split(symbol, ".")
-		var oid []uint32
+		var oid []uint64
 		for _, s := range oidStr {
-			u, err := strconv.ParseUint(s, 10, 32)
+			u, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return token{}, &parseError{start, err}
 			}
-			oid = append(oid, uint32(u))
+			oid = append(oid, u)
 		}
 		der, ok := appendObjectIdentifier(nil, oid)
 		if !ok {
@@ -437,13 +437,13 @@ loop:
 
 	if regexpRelativeOID.MatchString(symbol) {
 		oidStr := strings.Split(symbol[1:], ".")
-		var oid []uint32
+		var oid []uint64
 		for _, s := range oidStr {
-			u, err := strconv.ParseUint(s, 10, 32)
+			u, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return token{}, &parseError{start, err}
 			}
-			oid = append(oid, uint32(u))
+			oid = append(oid, u)
 		}
 		der := appendRelativeOID(nil, oid)
 		return token{Kind: tokenBytes, Value: der, Pos: s.pos}, nil

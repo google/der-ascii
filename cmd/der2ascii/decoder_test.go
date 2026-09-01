@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"math"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/der-ascii/internal"
@@ -231,33 +232,23 @@ func TestDecodeInteger(t *testing.T) {
 	}
 }
 
-func eqUint32s(a, b []uint32) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 var decodeObjectIdentifierTests = []struct {
 	in  []byte
-	out []uint32
+	out []uint64
 	ok  bool
 }{
-	{[]byte{1}, []uint32{0, 1}, true},
-	{[]byte{42, 3, 4, 0x7f, 0x81, 0x00, 0x81, 0x01}, []uint32{1, 2, 3, 4, 127, 128, 129}, true},
-	{[]byte{81}, []uint32{2, 1}, true},
-	{[]byte{0x8f, 0xff, 0xff, 0xff, 0x7f}, []uint32{2, math.MaxUint32 - 80}, true},
+	{[]byte{1}, []uint64{0, 1}, true},
+	{[]byte{42, 3, 4, 0x7f, 0x81, 0x00, 0x81, 0x01}, []uint64{1, 2, 3, 4, 127, 128, 129}, true},
+	{[]byte{81}, []uint64{2, 1}, true},
+	{[]byte{0x8f, 0xff, 0xff, 0xff, 0x7f}, []uint64{2, math.MaxUint32 - 80}, true},
+	{[]byte{0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}, []uint64{2, math.MaxUint64 - 80}, true},
 	// Empty.
 	{[]byte{}, nil, false},
 	// Incomplete component.
 	{[]byte{0xff}, nil, false},
 	// Overflow.
-	{[]byte{0x9f, 0xff, 0xff, 0xff, 0x7f}, nil, false},
+	{[]byte{0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00}, nil, false},
+	{[]byte{0x83, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}, nil, false},
 }
 
 func TestDecodeObjectIdentifier(t *testing.T) {
@@ -269,7 +260,7 @@ func TestDecodeObjectIdentifier(t *testing.T) {
 			}
 		} else if !ok {
 			t.Errorf("%d. decodeObjectIdentifier(%v) unexpectedly failed.", i, tt.in)
-		} else if !eqUint32s(out, tt.out) {
+		} else if !slices.Equal(out, tt.out) {
 			t.Errorf("%d. decodeObjectIdentifier(%v) = %v wanted %v.", i, tt.in, out, tt.out)
 		}
 	}
@@ -277,18 +268,20 @@ func TestDecodeObjectIdentifier(t *testing.T) {
 
 var decodeRelativeOIDTests = []struct {
 	in  []byte
-	out []uint32
+	out []uint64
 	ok  bool
 }{
-	{[]byte{1}, []uint32{1}, true},
-	{[]byte{1, 2, 3, 4, 0x7f, 0x81, 0x00, 0x81, 0x01}, []uint32{1, 2, 3, 4, 127, 128, 129}, true},
-	{[]byte{0x8f, 0xff, 0xff, 0xff, 0x7f}, []uint32{math.MaxUint32}, true},
+	{[]byte{1}, []uint64{1}, true},
+	{[]byte{1, 2, 3, 4, 0x7f, 0x81, 0x00, 0x81, 0x01}, []uint64{1, 2, 3, 4, 127, 128, 129}, true},
+	{[]byte{0x8f, 0xff, 0xff, 0xff, 0x7f}, []uint64{math.MaxUint32}, true},
+	{[]byte{0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}, []uint64{math.MaxUint64}, true},
 	// Empty.
 	{[]byte{}, nil, false},
 	// Incomplete component.
 	{[]byte{0xff}, nil, false},
 	// Overflow.
-	{[]byte{0x9f, 0xff, 0xff, 0xff, 0x7f}, nil, false},
+	{[]byte{0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00}, nil, false},
+	{[]byte{0x83, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}, nil, false},
 }
 
 func TestDecodeRelativeOID(t *testing.T) {
@@ -300,7 +293,7 @@ func TestDecodeRelativeOID(t *testing.T) {
 			}
 		} else if !ok {
 			t.Errorf("%d. decodeRelativeOID(%v) unexpectedly failed.", i, tt.in)
-		} else if !eqUint32s(out, tt.out) {
+		} else if !slices.Equal(out, tt.out) {
 			t.Errorf("%d. decodeRelativeOID(%v) = %v wanted %v.", i, tt.in, out, tt.out)
 		}
 	}

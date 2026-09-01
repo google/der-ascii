@@ -21,7 +21,7 @@ import (
 	"github.com/google/der-ascii/internal"
 )
 
-func appendBase128(dst []byte, value uint32) []byte {
+func appendBase128(dst []byte, value uint64) []byte {
 	dst, err := appendBase128WithLength(dst, value, 0)
 	if err != nil {
 		// Only a length override can fail.
@@ -30,7 +30,7 @@ func appendBase128(dst []byte, value uint32) []byte {
 	return dst
 }
 
-func appendBase128WithLength(dst []byte, value uint32, length int) ([]byte, error) {
+func appendBase128WithLength(dst []byte, value uint64, length int) ([]byte, error) {
 	// Count how many bytes are needed.
 	var l int
 	for n := value; n != 0; n >>= 7 {
@@ -73,7 +73,7 @@ func appendTag(dst []byte, tag internal.Tag) ([]byte, error) {
 	// High-tag-number form.
 	b |= 0x1f
 	dst = append(dst, b)
-	return appendBase128WithLength(dst, tag.Number, tag.LongFormOverride)
+	return appendBase128WithLength(dst, uint64(tag.Number), tag.LongFormOverride)
 }
 
 // appendLength marshals the given length in DER and appends the result to dst,
@@ -120,7 +120,7 @@ func appendInteger(dst []byte, value int64) []byte {
 	return dst
 }
 
-func appendObjectIdentifier(dst []byte, value []uint32) ([]byte, bool) {
+func appendObjectIdentifier(dst []byte, value []uint64) ([]byte, bool) {
 	// Validate the input before anything is written.
 	if len(value) < 2 || value[0] > 2 || (value[0] < 2 && value[1] > 39) {
 		return dst, false
@@ -136,7 +136,7 @@ func appendObjectIdentifier(dst []byte, value []uint32) ([]byte, bool) {
 	return dst, true
 }
 
-func appendRelativeOID(dst []byte, value []uint32) []byte {
+func appendRelativeOID(dst []byte, value []uint64) []byte {
 	for _, v := range value {
 		dst = appendBase128(dst, v)
 	}

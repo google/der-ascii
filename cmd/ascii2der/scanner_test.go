@@ -42,7 +42,13 @@ SEQUENCE[0]{}SEQUENCE}1}-1}1.2}#comment
 ` + "`AABBCC`" + `
 
 # Length modifiers
-indefinite long-form:2 adjust-length:10 adjust-length:-10`,
+indefinite long-form:2 adjust-length:10 adjust-length:-10
+
+# Maximally large OIDs and relative-OIDs.
+# 2.(MaxUint64-81).MaxUint64
+2.18446744073709551535.18446744073709551615
+# .MaxUint64.MaxUint64
+.18446744073709551615.18446744073709551615`,
 		[]token{
 			{Kind: tokenBytes, Value: []byte{0x30}},
 			{Kind: tokenBytes, Value: []byte{0x30}},
@@ -74,6 +80,8 @@ indefinite long-form:2 adjust-length:10 adjust-length:-10`,
 			{Kind: tokenLongForm, Length: 2},
 			{Kind: tokenAdjustLength, Length: 10},
 			{Kind: tokenAdjustLength, Length: -10},
+			{Kind: tokenBytes, Value: []byte{0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}},
+			{Kind: tokenBytes, Value: []byte{0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}},
 			{Kind: tokenEOF},
 		},
 		true,
@@ -93,8 +101,12 @@ indefinite long-form:2 adjust-length:10 adjust-length:-10`,
 	{"999999999999999999999999999999999999999999999999999999999999999", nil, false},
 	// Invalid OID.
 	{"1.99.1", nil, false},
-	// OID component overflow.
+	// OID and relative-OID component overflow.
 	{"1.1.99999999999999999999999999999999999999999999999999999999999999999", nil, false},
+	{"1.1.18446744073709551616", nil, false},
+	{"2.18446744073709551536", nil, false}, // 2^64 - 80
+	{".99999999999999999999999999999999999999999999999999999999999999999", nil, false},
+	{".18446744073709551616", nil, false},
 	// Bad tag string.
 	{"[THIS IS NOT A VALID TAG]", nil, false},
 	{"[]", nil, false},

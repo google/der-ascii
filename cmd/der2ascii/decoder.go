@@ -14,9 +14,13 @@
 
 package main
 
-import "github.com/google/der-ascii/internal"
+import (
+	"math"
 
-func parseBase128(bytes []byte) (ret uint32, rest []byte, ok bool) {
+	"github.com/google/der-ascii/internal"
+)
+
+func parseBase128(bytes []byte) (ret uint64, rest []byte, ok bool) {
 	rest = bytes
 	// There must be at least one byte, and the value must be minimally-encoded.
 	if len(rest) == 0 || rest[0] == 0x80 {
@@ -28,7 +32,7 @@ func parseBase128(bytes []byte) (ret uint32, rest []byte, ok bool) {
 			return
 		}
 		b := rest[0]
-		ret = (ret << 7) | uint32(b&0x7f)
+		ret = (ret << 7) | uint64(b&0x7f)
 		rest = rest[1:]
 		if b&0x80 == 0 {
 			ok = true
@@ -37,7 +41,7 @@ func parseBase128(bytes []byte) (ret uint32, rest []byte, ok bool) {
 	}
 }
 
-func parseBase128Lax(bytes []byte) (ret uint32, lengthOverride int, rest []byte, ok bool) {
+func parseBase128Lax(bytes []byte) (ret uint64, lengthOverride int, rest []byte, ok bool) {
 	rest = bytes
 	// Tolerate non-minimal inputs.
 	isMinimal := true
@@ -77,7 +81,7 @@ func parseTag(bytes []byte) (tag internal.Tag, rest []byte, ok bool) {
 	}
 
 	n, lengthOverride, rest, base128Ok := parseBase128Lax(rest)
-	if !base128Ok {
+	if !base128Ok || n > math.MaxUint32 {
 		// Parse error.
 		rest = bytes
 		return
@@ -86,7 +90,7 @@ func parseTag(bytes []byte) (tag internal.Tag, rest []byte, ok bool) {
 		// Non-minimal encoding.
 		lengthOverride = len(bytes) - len(rest) - 1
 	}
-	number = n
+	number = uint32(n)
 
 	tag = internal.Tag{class, number, constructed, lengthOverride}
 	ok = true
@@ -202,13 +206,13 @@ func decodeInteger(bytes []byte) (int64, bool) {
 
 // decodeObjectIdentifier decodes bytes as the contents of a DER OBJECT IDENTIFIER. It
 // returns the value on success and false otherwise.
-func decodeObjectIdentifier(bytes []byte) (oid []uint32, ok bool) {
+func decodeObjectIdentifier(bytes []byte) (oid []uint64, ok bool) {
 	// Reserve a space as the first component is split.
-	oid = []uint32{0}
+	oid = []uint64{0}
 
 	// Decode each component.
 	for len(bytes) != 0 {
-		var c uint32
+		var c uint64
 		c, bytes, ok = parseBase128(bytes)
 		if !ok {
 			return nil, false
@@ -235,10 +239,10 @@ func decodeObjectIdentifier(bytes []byte) (oid []uint32, ok bool) {
 
 // decodeRelativeOID decodes bytes as the contents of a DER RELATIVE-OID. It
 // returns the value on success and false otherwise.
-func decodeRelativeOID(bytes []byte) (oid []uint32, ok bool) {
+func decodeRelativeOID(bytes []byte) (oid []uint64, ok bool) {
 	// Decode each component.
 	for len(bytes) != 0 {
-		var c uint32
+		var c uint64
 		c, bytes, ok = parseBase128(bytes)
 		if !ok {
 			return nil, false

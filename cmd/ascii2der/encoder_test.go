@@ -143,21 +143,22 @@ func TestAppendInteger(t *testing.T) {
 }
 
 var appendObjectIdentifierTests = []struct {
-	value   []uint32
+	value   []uint64
 	encoded []byte
 	ok      bool
 }{
-	{[]uint32{0, 1}, []byte{1}, true},
-	{[]uint32{1, 2, 3, 4, 0, 127, 128, 129}, []byte{42, 3, 4, 0, 0x7f, 0x81, 0x00, 0x81, 0x01}, true},
-	{[]uint32{2, 1}, []byte{81}, true},
-	{[]uint32{2, math.MaxUint32 - 80}, []byte{0x8f, 0xff, 0xff, 0xff, 0x7f}, true},
+	{[]uint64{0, 1}, []byte{1}, true},
+	{[]uint64{1, 2, 3, 4, 0, 127, 128, 129}, []byte{42, 3, 4, 0, 0x7f, 0x81, 0x00, 0x81, 0x01}, true},
+	{[]uint64{2, 1}, []byte{81}, true},
+	{[]uint64{2, math.MaxUint32 - 80}, []byte{0x8f, 0xff, 0xff, 0xff, 0x7f}, true},
+	{[]uint64{2, math.MaxUint64 - 80}, []byte{0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}, true},
 	// Invalid OIDs.
-	{[]uint32{}, nil, false},
-	{[]uint32{1}, nil, false},
-	{[]uint32{1, 40}, nil, false},
-	{[]uint32{0, 40}, nil, false},
-	{[]uint32{3, 1}, nil, false},
-	{[]uint32{2, math.MaxUint32 - 79}, nil, false},
+	{[]uint64{}, nil, false},
+	{[]uint64{1}, nil, false},
+	{[]uint64{1, 40}, nil, false},
+	{[]uint64{0, 40}, nil, false},
+	{[]uint64{3, 1}, nil, false},
+	{[]uint64{2, math.MaxUint64 - 79}, nil, false},
 }
 
 func TestAppendObjectIdentifier(t *testing.T) {
@@ -188,14 +189,15 @@ func TestAppendObjectIdentifier(t *testing.T) {
 }
 
 var appendRelativeOIDTests = []struct {
-	value   []uint32
+	value   []uint64
 	encoded []byte
 }{
-	{[]uint32{1}, []byte{1}},
-	{[]uint32{1, 2, 3, 4, 0, 127, 128, 129}, []byte{1, 2, 3, 4, 0, 0x7f, 0x81, 0x00, 0x81, 0x01}},
-	{[]uint32{math.MaxUint32}, []byte{0x8f, 0xff, 0xff, 0xff, 0x7f}},
+	{[]uint64{1}, []byte{1}},
+	{[]uint64{1, 2, 3, 4, 0, 127, 128, 129}, []byte{1, 2, 3, 4, 0, 0x7f, 0x81, 0x00, 0x81, 0x01}},
+	{[]uint64{math.MaxUint32}, []byte{0x8f, 0xff, 0xff, 0xff, 0x7f}},
+	{[]uint64{math.MaxUint64}, []byte{0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}},
 	// This is not actually valid, but the tokenizer will never try to serialize it.
-	{[]uint32{}, []byte{}},
+	{[]uint64{}, []byte{}},
 }
 
 func TestAppendRelativeOID(t *testing.T) {
