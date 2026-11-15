@@ -95,6 +95,7 @@ subjectInfoAccess: 1.3.6.1.5.5.7.1.11
 ipAddrBlocks-v2: 1.3.6.1.5.5.7.1.28
 autonomousSysIds-v2: 1.3.6.1.5.5.7.1.29
 mtcCertificationAuthority-SHA256: 1.3.6.1.5.5.7.1.38
+mtcTlogPrefixURLs: 1.3.6.1.4.1.64829.2.2
 subjectDirectoryAttributes: 2.5.29.9
 subjectKeyIdentifier: 2.5.29.14
 keyUsage: 2.5.29.15
